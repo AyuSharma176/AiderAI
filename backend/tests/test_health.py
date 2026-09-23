@@ -39,6 +39,21 @@ def test_production_settings_require_gemini_key(
         Settings(_env_file=None)
 
 
+def test_enabled_production_gmail_requires_oauth_and_encryption(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("GMAIL_INTEGRATION_ENABLED", "true")
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+    monkeypatch.setenv("GEMINI_API_KEY", "key")
+    monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("GMAIL_TOKEN_ENCRYPTION_KEYS", raising=False)
+
+    with pytest.raises(ValidationError, match="Google OAuth"):
+        Settings(_env_file=None)
+
+
 def test_readiness_reports_dependency_failure(app) -> None:
     from app.api.v1.health import get_readiness_checker
 

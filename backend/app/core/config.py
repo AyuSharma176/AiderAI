@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from cryptography.fernet import Fernet
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -30,6 +31,16 @@ class Settings(BaseSettings):
     chat_rate_limit: int = 30
     upload_rate_limit: int = 10
     rate_limit_window_seconds: int = 60
+    gmail_integration_enabled: bool = False
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: SecretStr | None = None
+    google_oauth_redirect_uri: str = (
+        "http://localhost:8000/api/v1/integrations/gmail/callback"
+    )
+    gmail_token_encryption_keys: list[SecretStr] = []
+    gmail_import_months: int = 12
+    gmail_sync_interval_minutes: int = 30
+    gmail_max_message_bytes: int = 1_000_000
 
     @model_validator(mode="after")
     def require_provider_key(self) -> "Settings":
@@ -37,6 +48,23 @@ class Settings(BaseSettings):
             self.gemini_api_key is None or not self.gemini_api_key.get_secret_value()
         ):
             raise ValueError("GEMINI_API_KEY is required in production")
+        if self.app_env == "production" and self.gmail_integration_enabled:
+            has_client_id = bool(self.google_oauth_client_id)
+            has_client_secret = bool(
+                self.google_oauth_client_secret
+                and self.google_oauth_client_secret.get_secret_value()
+            )
+            if not has_client_id or not has_client_secret:
+                raise ValueError("Google OAuth client ID and secret are required")
+            if not self.google_oauth_redirect_uri.startswith("https://"):
+                raise ValueError("Google OAuth redirect URI must use HTTPS")
+            if not self.gmail_token_encryption_keys:
+                raise ValueError("Google OAuth token encryption key is required")
+            try:
+                for key in self.gmail_token_encryption_keys:
+                    Fernet(key.get_secret_value().encode())
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Google OAuth token encryption key is invalid") from exc
         return self
 
 
