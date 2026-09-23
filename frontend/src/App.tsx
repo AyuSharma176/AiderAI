@@ -4,6 +4,7 @@ import { AuthPage } from "./auth/AuthPage";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ChatPage } from "./chat/ChatPage";
 import { ConversationList } from "./conversations/ConversationList";
+import { DocumentsPage } from "./documents/DocumentsPage";
 import { DashboardLayout } from "./layout/DashboardLayout";
 
 function Placeholder({ title, description }: { title: string; description: string }) {
@@ -19,7 +20,7 @@ export function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/conversations" element={<ConversationList />} />
-          <Route path="/knowledge" element={<Placeholder title="Knowledge base" description="Manage the documents that ground AI answers." />} />
+          <Route path="/knowledge" element={<DocumentsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/chat" replace />} />
