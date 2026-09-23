@@ -3,12 +3,12 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
-from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.core.config import Settings, get_settings
 from app.core.database import get_db
+from app.core.errors import error_response
 from app.models import User
 from app.schemas.document import DocumentResponse
 from app.services.document import (
@@ -19,6 +19,7 @@ from app.services.document import (
     list_documents,
     store_pdf,
 )
+from app.services.rate_limit import enforce_upload_rate_limit
 from app.workers.tasks import process_document
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
@@ -36,19 +37,14 @@ async def upload_document(
     _user: Annotated[User, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
     dispatch: Annotated[DocumentDispatcher, Depends(get_document_dispatcher)],
+    _rate_limit: Annotated[None, Depends(enforce_upload_rate_limit)],
 ):
     try:
         document = await store_pdf(session, file, settings)
     except InvalidPDFError as exc:
-        return JSONResponse(
-            status_code=422,
-            content={"code": "invalid_pdf", "message": str(exc)},
-        )
+        return error_response(422, "invalid_pdf", str(exc))
     except FileTooLargeError as exc:
-        return JSONResponse(
-            status_code=413,
-            content={"code": "file_too_large", "message": str(exc)},
-        )
+        return error_response(413, "file_too_large", str(exc))
     dispatch(str(document.id))
     return DocumentResponse.model_validate(document)
 

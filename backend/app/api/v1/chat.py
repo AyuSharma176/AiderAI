@@ -15,6 +15,7 @@ from app.models import User
 from app.rag.retrieval import retrieve
 from app.schemas.chat import ChatRequest
 from app.services.chat import execute_chat
+from app.services.rate_limit import enforce_chat_rate_limit
 from app.tools.registry import execute_tool
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
@@ -52,6 +53,7 @@ async def chat_message(
     session: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
     graph: Annotated[object, Depends(get_chat_graph)],
+    _rate_limit: Annotated[None, Depends(enforce_chat_rate_limit)],
 ) -> StreamingResponse:
     async def stream() -> AsyncIterator[str]:
         try:

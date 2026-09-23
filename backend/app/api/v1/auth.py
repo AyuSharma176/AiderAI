@@ -1,11 +1,11 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
+from app.core.errors import error_response
 from app.core.security import create_access_token
 from app.models import User
 from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserResponse
@@ -15,6 +15,7 @@ from app.services.auth import (
     authenticate_user,
     register_user,
 )
+from app.services.rate_limit import enforce_auth_rate_limit
 
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -28,16 +29,13 @@ def auth_response(user: User) -> AuthResponse:
 async def register(
     request: RegisterRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
+    _rate_limit: Annotated[None, Depends(enforce_auth_rate_limit)],
 ):
     try:
         return auth_response(await register_user(session, request))
     except EmailExistsError:
-        return JSONResponse(
-            status_code=409,
-            content={
-                "code": "email_exists",
-                "message": "An account with this email already exists",
-            },
+        return error_response(
+            409, "email_exists", "An account with this email already exists"
         )
 
 
@@ -45,20 +43,14 @@ async def register(
 async def login(
     request: LoginRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
+    _rate_limit: Annotated[None, Depends(enforce_auth_rate_limit)],
 ):
     try:
         return auth_response(await authenticate_user(session, request.email, request.password))
     except InvalidCredentialsError:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "code": "invalid_credentials",
-                "message": "Invalid email or password",
-            },
-        )
+        return error_response(401, "invalid_credentials", "Invalid email or password")
 
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: Annotated[User, Depends(get_current_user)]) -> User:
     return user
-

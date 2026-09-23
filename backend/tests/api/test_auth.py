@@ -68,9 +68,10 @@ async def test_duplicate_email_returns_stable_error(client: httpx.AsyncClient) -
     duplicate = await client.post("/api/v1/auth/register", json=payload)
 
     assert duplicate.status_code == 409
-    assert duplicate.json() == {
+    assert duplicate.json() | {"request_id": "ignored"} == {
         "code": "email_exists",
         "message": "An account with this email already exists",
+        "request_id": "ignored",
     }
 
 
@@ -81,7 +82,8 @@ async def test_invalid_token_paths_are_indistinguishable(client: httpx.AsyncClie
             "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 401
-        assert response.json() == {
+        assert response.json() | {"request_id": "ignored"} == {
             "code": "invalid_token",
             "message": "Invalid access token",
+            "request_id": "ignored",
         }

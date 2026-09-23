@@ -49,7 +49,10 @@ def make_retrieve(dependencies: AgentDependencies):
             "citations": chunks,
             "events": _append_events(
                 state,
-                AgentEvent(type="stage", data={"name": "retrieving"}),
+                AgentEvent(
+                    type="stage",
+                    data={"name": "retrieving", "retrieval_count": len(chunks)},
+                ),
                 *citation_events,
             ),
         }
