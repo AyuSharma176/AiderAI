@@ -147,6 +147,7 @@ services:
       GMAIL_TOKEN_ENCRYPTION_KEYS: '["MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="]'
       GMAIL_MESSAGE_ID_PEPPER: integration-only-message-id-pepper
       FRONTEND_URL: http://frontend:5173
+      CELERY_TASK_DEFAULT_QUEUE: integration
     depends_on:
       postgres:
         condition: service_healthy

@@ -17,6 +17,14 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    expected_tables = {
+        "email_connections",
+        "commerce_orders",
+        "commerce_order_items",
+        "order_source_events",
+    }
+    if expected_tables.issubset(set(sa.inspect(op.get_bind()).get_table_names())):
+        return
     op.create_table(
         "email_connections",
         sa.Column("id", sa.Uuid(), nullable=False),

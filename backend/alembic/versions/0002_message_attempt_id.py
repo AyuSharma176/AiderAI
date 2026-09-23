@@ -16,12 +16,19 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("messages", sa.Column("client_message_id", sa.Uuid(), nullable=True))
-    op.create_unique_constraint(
-        "uq_message_client_attempt",
-        "messages",
-        ["conversation_id", "client_message_id"],
-    )
+    inspector = sa.inspect(op.get_bind())
+    columns = {column["name"] for column in inspector.get_columns("messages")}
+    if "client_message_id" not in columns:
+        op.add_column("messages", sa.Column("client_message_id", sa.Uuid(), nullable=True))
+    constraints = {
+        constraint["name"] for constraint in inspector.get_unique_constraints("messages")
+    }
+    if "uq_message_client_attempt" not in constraints:
+        op.create_unique_constraint(
+            "uq_message_client_attempt",
+            "messages",
+            ["conversation_id", "client_message_id"],
+        )
 
 
 def downgrade() -> None:
