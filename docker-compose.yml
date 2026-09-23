@@ -44,6 +44,21 @@ services:
       CHAT_RATE_LIMIT: ${CHAT_RATE_LIMIT:-30}
       UPLOAD_RATE_LIMIT: ${UPLOAD_RATE_LIMIT:-10}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      GMAIL_INTEGRATION_ENABLED: ${GMAIL_INTEGRATION_ENABLED:-false}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:8000/api/v1/integrations/gmail/callback}
+      GOOGLE_OAUTH_AUTHORIZATION_ENDPOINT: ${GOOGLE_OAUTH_AUTHORIZATION_ENDPOINT:-https://accounts.google.com/o/oauth2/v2/auth}
+      GOOGLE_OAUTH_TOKEN_ENDPOINT: ${GOOGLE_OAUTH_TOKEN_ENDPOINT:-https://oauth2.googleapis.com/token}
+      GOOGLE_OAUTH_REVOKE_ENDPOINT: ${GOOGLE_OAUTH_REVOKE_ENDPOINT:-https://oauth2.googleapis.com/revoke}
+      GMAIL_API_ROOT: ${GMAIL_API_ROOT:-https://gmail.googleapis.com/gmail/v1/users/me}
+      GMAIL_TOKEN_ENCRYPTION_KEYS: ${GMAIL_TOKEN_ENCRYPTION_KEYS:-[]}
+      GMAIL_IMPORT_MONTHS: ${GMAIL_IMPORT_MONTHS:-12}
+      GMAIL_SYNC_INTERVAL_MINUTES: ${GMAIL_SYNC_INTERVAL_MINUTES:-30}
+      GMAIL_MAX_MESSAGE_BYTES: ${GMAIL_MAX_MESSAGE_BYTES:-1000000}
+      GMAIL_MESSAGE_ID_PEPPER: ${GMAIL_MESSAGE_ID_PEPPER:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      INTEGRATION_SYNC_RATE_LIMIT: ${INTEGRATION_SYNC_RATE_LIMIT:-3}
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,6 +88,18 @@ services:
       - ./backend:/app
       - uploads:/app/uploads
 
+  beat:
+    build: ./backend
+    command: celery -A app.workers.celery_app:celery_app beat --loglevel=info
+    environment: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
   frontend:
     build: ./frontend
     command: npm run dev -- --host 0.0.0.0
@@ -87,6 +114,78 @@ services:
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
+
+  fake-gmail:
+    profiles: ["integration"]
+    build: ./backend
+    command: uvicorn tests.integration.fake_gmail:app --host 0.0.0.0 --port 8080
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/openapi.json')"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    volumes:
+      - ./backend:/app
+
+  integration-api:
+    profiles: ["integration"]
+    build: ./backend
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment: &integration-backend-environment
+      <<: *backend-environment
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://supportai:supportai@postgres:5432/supportai
+      JWT_SECRET: integration-only-jwt-secret-with-32-characters
+      GMAIL_INTEGRATION_ENABLED: "true"
+      GOOGLE_OAUTH_CLIENT_ID: integration-client
+      GOOGLE_OAUTH_CLIENT_SECRET: integration-secret
+      GOOGLE_OAUTH_REDIRECT_URI: http://integration-api:8000/api/v1/integrations/gmail/callback
+      GOOGLE_OAUTH_AUTHORIZATION_ENDPOINT: http://fake-gmail:8080/oauth/authorize
+      GOOGLE_OAUTH_TOKEN_ENDPOINT: http://fake-gmail:8080/oauth/token
+      GOOGLE_OAUTH_REVOKE_ENDPOINT: http://fake-gmail:8080/oauth/revoke
+      GMAIL_API_ROOT: http://fake-gmail:8080/gmail/users/me
+      GMAIL_TOKEN_ENCRYPTION_KEYS: '["MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="]'
+      GMAIL_MESSAGE_ID_PEPPER: integration-only-message-id-pepper
+      FRONTEND_URL: http://frontend:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fake-gmail:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - ./backend:/app
+
+  integration-worker:
+    profiles: ["integration"]
+    build: ./backend
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=info --concurrency=1
+    environment: *integration-backend-environment
+    depends_on:
+      integration-api:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  integration-tests:
+    profiles: ["integration"]
+    build: ./backend
+    command: pytest tests/integration/test_gmail_order_journey.py -q
+    environment:
+      INTEGRATION_API_URL: http://integration-api:8000
+    depends_on:
+      integration-api:
+        condition: service_healthy
+      integration-worker:
+        condition: service_started
+    volumes:
+      - ./backend:/app
 
 volumes:
   postgres_data:

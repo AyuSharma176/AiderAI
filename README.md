@@ -10,6 +10,7 @@ SupportAI is a portfolio-grade customer-support workspace that combines authenti
 - Ground knowledge answers in pgvector similarity search with source/page citations.
 - Check an owned order, view the authenticated profile, or create a support ticket through three allow-listed tools.
 - Resume private conversation history from a responsive React dashboard.
+- Connect Gmail with read-only OAuth, import Amazon and Flipkart order updates, and ask about them from one private order view.
 - Trace requests with request IDs, structured JSON logs, safe execution metadata, readiness probes, and Redis-backed limits.
 
 ## Architecture
@@ -104,6 +105,16 @@ Copy `.env.example` to `.env`, replace the development secrets, and add your Gem
 | `CHAT_RATE_LIMIT` | Chat requests per window/client | `30` |
 | `UPLOAD_RATE_LIMIT` | Uploads per window/client | `10` |
 | `RATE_LIMIT_WINDOW_SECONDS` | Redis counter window | `60` |
+| `GMAIL_INTEGRATION_ENABLED` | Enables Gmail OAuth and imported orders | `false` |
+| `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth web client ID | none |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth web client secret | none |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Authorized Google callback URL | localhost callback |
+| `GMAIL_TOKEN_ENCRYPTION_KEYS` | JSON array of Fernet keys, newest first | `[]` |
+| `GMAIL_IMPORT_MONTHS` | Initial Gmail lookback window | `12` |
+| `GMAIL_SYNC_INTERVAL_MINUTES` | Periodic sync interval | `30` |
+| `GMAIL_MAX_MESSAGE_BYTES` | Maximum normalized email body size | `1000000` |
+| `GMAIL_MESSAGE_ID_PEPPER` | Secret used to hash provider message IDs | none |
+| `FRONTEND_URL` | OAuth completion redirect origin | localhost:5173 |
 | `VITE_API_URL` | Browser API base URL | `http://localhost:8000/api/v1` |
 
 Generate a production secret with a password manager or `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Never commit `.env`.
@@ -131,6 +142,46 @@ docker compose down -v   # also removes local database/Redis volumes
 ```
 
 The final command is destructive and is only appropriate when you intentionally want a clean local database.
+
+## Connect Gmail for Amazon and Flipkart orders
+
+SupportAI connects to Gmail with Google's OAuth consent screen and requests only the
+`gmail.readonly` scope. It never asks for or stores an Amazon, Flipkart, or email
+password. Marketplace shopper accounts do not expose a suitable consumer-order API,
+so this release extracts order facts only from the user's own opted-in notification
+emails. It does not scrape marketplace websites.
+
+1. In Google Cloud, create an OAuth consent screen and a **Web application** OAuth
+   client. While the app is in testing, add each Gmail account under **Test users**.
+2. Add `http://localhost:8000/api/v1/integrations/gmail/callback` as an authorized
+   redirect URI. For production, register the exact HTTPS callback instead.
+3. Generate a Fernet key with
+   `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+   and a separate random message-ID pepper with
+   `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+4. Put the client ID, client secret, Fernet key as a JSON array, and pepper in `.env`;
+   set `GMAIL_INTEGRATION_ENABLED=true`; then recreate `api`, `worker`, and `beat`.
+5. Sign in, open **Knowledge Base**, select **Connect Gmail**, approve Google's
+   read-only consent, then use **My Orders** or ask the assistant about an item.
+
+Google classifies Gmail read-only access as a restricted scope. A private/testing app
+can use test users, but broad production distribution may require Google OAuth app
+verification and a security assessment. Review Google's current requirements before
+launching publicly.
+
+Only normalized order facts, encrypted refresh tokens, and one-way-hashed Gmail
+message IDs are persisted. Raw email bodies, MIME payloads, attachments, plaintext
+tokens, and marketplace credentials are not stored. **Disconnect Gmail** revokes the
+token and stops future sync while retaining imported orders; **Delete imported
+orders** removes those order records separately.
+
+To run the isolated fake-provider journey (it never contacts Google):
+
+```bash
+docker compose --profile integration run --rm integration-tests \
+  pytest tests/integration/test_gmail_order_journey.py -q
+docker compose --profile integration down
+```
 
 ## Migrations and seed data
 
@@ -231,6 +282,10 @@ On a provider failure the stream terminates with one `error` event, and no parti
 - **Document fails with no readable text:** use a text-based PDF. Scanned image-only PDFs need OCR, which is outside this release.
 - **Readiness is 503:** inspect `GET /health/ready`, then check PostgreSQL and Redis with `docker compose ps`.
 - **Frontend receives CORS errors:** add the exact browser origin to `CORS_ORIGINS` as a JSON array and restart the API.
+- **Gmail Connect is hidden or returns 404:** set `GMAIL_INTEGRATION_ENABLED=true`, fill every Google/OAuth encryption setting, and recreate the API and worker.
+- **Google reports `redirect_uri_mismatch`:** make the Google Cloud authorized redirect URI exactly match `GOOGLE_OAUTH_REDIRECT_URI`, including scheme and port.
+- **Gmail needs reconnection:** the refresh token was revoked or expired; disconnect, reconnect, and approve offline access again.
+- **Order sync does not finish:** inspect `docker compose logs worker beat`, confirm Redis is healthy, and use the Sync button after the rate-limit window.
 - **Reset local state:** `docker compose down -v`, then rerun migrations and seed. This deletes local project data.
 
 ## Five-minute interview narrative
@@ -263,6 +318,6 @@ backend/app/agent     LangGraph state, nodes, and graph
 backend/app/ai        Gemini gateway and prompt boundaries
 backend/app/rag       PDF extraction, chunking, indexing, retrieval
 backend/app/tools     Typed fixed tool registry
-backend/app/workers   Celery application and document task
-frontend/src          React auth, chat, history, and documents UI
+backend/app/workers   Celery application, document task, and Gmail order sync
+frontend/src          React auth, chat, history, documents, integrations, and orders UI
 ```

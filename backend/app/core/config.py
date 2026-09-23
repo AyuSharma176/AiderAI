@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     google_oauth_redirect_uri: str = (
         "http://localhost:8000/api/v1/integrations/gmail/callback"
     )
+    google_oauth_authorization_endpoint: str = "https://accounts.google.com/o/oauth2/v2/auth"
+    google_oauth_token_endpoint: str = "https://oauth2.googleapis.com/token"
+    google_oauth_revoke_endpoint: str = "https://oauth2.googleapis.com/revoke"
+    gmail_api_root: str = "https://gmail.googleapis.com/gmail/v1/users/me"
     gmail_token_encryption_keys: list[SecretStr] = []
     gmail_import_months: int = 12
     gmail_sync_interval_minutes: int = 30
@@ -61,6 +65,14 @@ class Settings(BaseSettings):
                 raise ValueError("Google OAuth client ID and secret are required")
             if not self.google_oauth_redirect_uri.startswith("https://"):
                 raise ValueError("Google OAuth redirect URI must use HTTPS")
+            provider_endpoints = (
+                self.google_oauth_authorization_endpoint,
+                self.google_oauth_token_endpoint,
+                self.google_oauth_revoke_endpoint,
+                self.gmail_api_root,
+            )
+            if any(not endpoint.startswith("https://") for endpoint in provider_endpoints):
+                raise ValueError("Google provider endpoints must use HTTPS")
             if not self.gmail_token_encryption_keys:
                 raise ValueError("Google OAuth token encryption key is required")
             try:

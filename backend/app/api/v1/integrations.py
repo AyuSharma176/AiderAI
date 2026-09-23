@@ -56,6 +56,10 @@ async def get_google_oauth_client(
             client_secret=settings.google_oauth_client_secret.get_secret_value(),
             redirect_uri=settings.google_oauth_redirect_uri,
             http_client=client,
+            authorization_endpoint=settings.google_oauth_authorization_endpoint,
+            token_endpoint=settings.google_oauth_token_endpoint,
+            revoke_endpoint=settings.google_oauth_revoke_endpoint,
+            gmail_api_root=settings.gmail_api_root,
         )
     finally:
         await client.aclose()

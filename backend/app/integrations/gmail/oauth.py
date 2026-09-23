@@ -98,11 +98,19 @@ class GoogleOAuthClient:
         client_secret: str,
         redirect_uri: str,
         http_client: httpx.AsyncClient,
+        authorization_endpoint: str = AUTHORIZATION_ENDPOINT,
+        token_endpoint: str = TOKEN_ENDPOINT,
+        revoke_endpoint: str = REVOKE_ENDPOINT,
+        gmail_api_root: str = "https://gmail.googleapis.com/gmail/v1/users/me",
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
         self.http_client = http_client
+        self.authorization_endpoint = authorization_endpoint.rstrip("/")
+        self.token_endpoint = token_endpoint
+        self.revoke_endpoint = revoke_endpoint
+        self.gmail_api_root = gmail_api_root.rstrip("/")
 
     def authorization_url(self, state: str, code_challenge: str) -> str:
         query = urlencode(
@@ -119,7 +127,7 @@ class GoogleOAuthClient:
                 "code_challenge_method": "S256",
             }
         )
-        return f"{AUTHORIZATION_ENDPOINT}?{query}"
+        return f"{self.authorization_endpoint}?{query}"
 
     def raise_for_callback_error(self, error: str | None, description: str | None = None) -> None:
         del description
@@ -131,7 +139,7 @@ class GoogleOAuthClient:
     async def exchange_code(self, code: str, code_verifier: str) -> GoogleOAuthTokens:
         try:
             response = await self.http_client.post(
-                TOKEN_ENDPOINT,
+                self.token_endpoint,
                 data={
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
@@ -152,7 +160,7 @@ class GoogleOAuthClient:
     async def revoke(self, token: str) -> None:
         try:
             response = await self.http_client.post(
-                REVOKE_ENDPOINT,
+                self.revoke_endpoint,
                 data={"token": token},
                 timeout=10.0,
             )
@@ -165,7 +173,7 @@ class GoogleOAuthClient:
     async def refresh_access_token(self, refresh_token: str) -> str:
         try:
             response = await self.http_client.post(
-                TOKEN_ENDPOINT,
+                self.token_endpoint,
                 data={
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
@@ -191,7 +199,7 @@ class GoogleOAuthClient:
     async def get_profile(self, access_token: str) -> dict[str, str]:
         try:
             response = await self.http_client.get(
-                "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                f"{self.gmail_api_root}/profile",
                 headers={"Authorization": f"Bearer {access_token}"},
                 timeout=10.0,
             )

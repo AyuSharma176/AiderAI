@@ -83,6 +83,10 @@ class ConfiguredSyncRunner:
             client_secret=settings.google_oauth_client_secret.get_secret_value(),
             redirect_uri=settings.google_oauth_redirect_uri,
             http_client=self.http,
+            authorization_endpoint=settings.google_oauth_authorization_endpoint,
+            token_endpoint=settings.google_oauth_token_endpoint,
+            revoke_endpoint=settings.google_oauth_revoke_endpoint,
+            gmail_api_root=settings.gmail_api_root,
         )
 
     async def sync(self, connection_id: str, mode: str) -> None:
@@ -99,7 +103,11 @@ class ConfiguredSyncRunner:
             except OAuthConsentDenied as exc:
                 raise GmailAuthenticationError("Gmail authorization must be renewed") from exc
 
-        gmail = GmailClient(http_client=self.http, access_token_provider=access_token)
+        gmail = GmailClient(
+            http_client=self.http,
+            access_token_provider=access_token,
+            api_root=self.settings.gmail_api_root,
+        )
         synchronizer = OrderSynchronizer(
             self.sessions,
             gmail,

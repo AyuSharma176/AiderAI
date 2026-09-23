@@ -31,9 +31,11 @@ class GmailClient:
         *,
         http_client: httpx.AsyncClient,
         access_token_provider: Callable[[], str | Awaitable[str]],
+        api_root: str = GMAIL_API_ROOT,
     ) -> None:
         self.http_client = http_client
         self.access_token_provider = access_token_provider
+        self.api_root = api_root.rstrip("/")
 
     async def _token(self) -> str:
         value = self.access_token_provider()
@@ -45,7 +47,7 @@ class GmailClient:
         token = await self._token()
         try:
             response = await self.http_client.get(
-                f"{GMAIL_API_ROOT}/{path}",
+                f"{self.api_root}/{path}",
                 params=params,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=httpx.Timeout(15.0, connect=5.0),
