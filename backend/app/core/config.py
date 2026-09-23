@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     gmail_import_months: int = 12
     gmail_sync_interval_minutes: int = 30
     gmail_max_message_bytes: int = 1_000_000
+    gmail_message_id_pepper: SecretStr | None = None
 
     @model_validator(mode="after")
     def require_provider_key(self) -> "Settings":

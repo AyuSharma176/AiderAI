@@ -161,3 +161,29 @@ class GoogleOAuthClient:
             raise OAuthProviderUnavailable(
                 "Google authorization is temporarily unavailable"
             ) from exc
+
+    async def refresh_access_token(self, refresh_token: str) -> str:
+        try:
+            response = await self.http_client.post(
+                TOKEN_ENDPOINT,
+                data={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                timeout=10.0,
+            )
+            if response.status_code in {400, 401}:
+                raise OAuthConsentDenied("Google authorization must be renewed")
+            response.raise_for_status()
+            value = response.json().get("access_token")
+            if not isinstance(value, str) or not value:
+                raise ValueError("missing access token")
+            return value
+        except OAuthConsentDenied:
+            raise
+        except (httpx.HTTPError, ValueError) as exc:
+            raise OAuthProviderUnavailable(
+                "Google authorization is temporarily unavailable"
+            ) from exc
