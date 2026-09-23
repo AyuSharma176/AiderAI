@@ -7,7 +7,8 @@ export interface CommerceOrder {
   placed_at: string | null; currency: string | null; total_amount: string | null;
   expected_delivery_at: string | null; delivered_at: string | null; tracking_number: string | null;
   carrier: string | null; marketplace_url: string | null; last_source_message_at: string | null;
+  last_sync_completed_at?: string | null;
   items?: OrderItem[]; events?: OrderEvent[];
 }
 export interface OrderListResponse { items: CommerceOrder[]; next_cursor: string | null; last_sync_completed_at: string | null; }
-export interface OrderFilters { marketplace?: Marketplace | ""; status?: OrderStatus | ""; q?: string; cursor?: string; }
+export interface OrderFilters { marketplace?: Marketplace | ""; status?: OrderStatus | ""; q?: string; since?: string; cursor?: string; }

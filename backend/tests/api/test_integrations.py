@@ -155,6 +155,21 @@ async def test_callback_persists_encrypted_refresh_token_and_queues_sync(
 
 
 @pytest.mark.asyncio
+async def test_callback_handles_declined_consent_without_requiring_code(
+    integration_context,
+) -> None:
+    await integration_context.client.post("/api/v1/integrations/gmail/authorize")
+
+    response = await integration_context.client.get(
+        "/api/v1/integrations/gmail/callback?error=access_denied&state=valid-state"
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].endswith("/knowledge?gmail=denied")
+    assert integration_context.queued == []
+
+
+@pytest.mark.asyncio
 async def test_status_and_delete_imported_orders_are_user_scoped(integration_context) -> None:
     response = await integration_context.client.get("/api/v1/integrations/gmail")
     assert response.status_code == 200
@@ -183,6 +198,37 @@ async def test_disconnect_revokes_token_then_is_idempotent(integration_context) 
         assert connection is not None
         assert connection.status.value == "disconnected"
         assert connection.encrypted_refresh_token == ""
+
+
+@pytest.mark.asyncio
+async def test_reconnect_requires_new_refresh_token_after_disconnect(
+    integration_context,
+) -> None:
+    await integration_context.client.post("/api/v1/integrations/gmail/authorize")
+    await integration_context.client.get(
+        "/api/v1/integrations/gmail/callback?code=valid-code&state=valid-state"
+    )
+    await integration_context.client.delete("/api/v1/integrations/gmail")
+
+    async def exchange_without_refresh(code, verifier):
+        assert (code, verifier) == ("valid-code", "verifier")
+        return GoogleOAuthTokens(
+            access_token="access-secret",
+            expires_in=3600,
+            scope="https://www.googleapis.com/auth/gmail.readonly",
+        )
+
+    integration_context.oauth.exchange_code = exchange_without_refresh
+    await integration_context.client.post("/api/v1/integrations/gmail/authorize")
+    response = await integration_context.client.get(
+        "/api/v1/integrations/gmail/callback?code=valid-code&state=valid-state"
+    )
+
+    assert response.status_code == 400
+    async with integration_context.sessions() as session:
+        connection = await session.scalar(select(EmailConnection))
+        assert connection is not None
+        assert connection.status.value == "disconnected"
 
 
 @pytest.mark.asyncio

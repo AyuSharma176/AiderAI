@@ -50,6 +50,7 @@ class CommerceOrderResponse(BaseModel):
 
 class CommerceOrderDetailResponse(CommerceOrderResponse):
     events: list[OrderSourceEventResponse]
+    last_sync_completed_at: datetime | None = None
 
 
 class CommerceOrderListResponse(BaseModel):

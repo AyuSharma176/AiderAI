@@ -80,6 +80,12 @@ async def test_list_filters_by_owner_marketplace_status_and_query(order_context)
     assert [item["marketplace_order_id"] for item in response.json()["items"]] == ["A-1"]
     assert response.json()["items"][0]["items"][0]["title"] == "USB-C charger"
 
+    too_recent = await order_context.client.get(
+        "/api/v1/orders?since=2026-09-21T00:00:00Z"
+    )
+    assert too_recent.status_code == 200
+    assert too_recent.json()["items"] == []
+
 
 @pytest.mark.asyncio
 async def test_foreign_order_id_is_not_found(order_context) -> None:
@@ -109,3 +115,4 @@ async def test_detail_emits_only_validated_marketplace_url(order_context) -> Non
 
     assert response.status_code == 200
     assert response.json()["marketplace_url"] is None
+    assert "last_sync_completed_at" in response.json()

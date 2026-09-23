@@ -23,7 +23,7 @@ async def test_candidate_query_is_bounded_to_senders_and_date() -> None:
 
     query = requests[0].url.params
     assert "after:2025/09/24" in query["q"]
-    assert "from:(amazon.in OR flipkart.com)" in query["q"]
+    assert "from:amazon.in OR from:flipkart.com" in query["q"]
     assert query["maxResults"] == "100"
     assert requests[0].headers["authorization"] == "Bearer access-token"
 

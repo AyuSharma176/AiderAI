@@ -31,11 +31,12 @@ def amazon_message() -> GmailRawMessage:
                 "mimeType": "text/plain",
                 "headers": [
                     {"name": "From", "value": "updates@amazon.in"},
-                    {"name": "Subject", "value": "Shipped 402-0000000-0000000"},
+                    {"name": "Subject", "value": "Confirmed 402-0000000-0000000"},
                 ],
                 "body": {
                     "data": encoded(
-                        "Order # 402-0000000-0000000 Item: USB-C charger (Qty: 1)"
+                        "Order confirmed. Order # 402-0000000-0000000 "
+                        "Item: USB-C charger (Qty: 1)"
                     )
                 },
             },
@@ -123,6 +124,9 @@ async def test_initial_sync_upserts_order_and_discards_raw_body(sync_context) ->
         )
         assert order is not None
         assert order.user_id == user.id
+        assert order.placed_at.replace(tzinfo=UTC) == datetime.fromtimestamp(
+            1789898400, tz=UTC
+        )
         assert not hasattr(order, "raw_email")
     assert result.order_count == 1
 
@@ -183,6 +187,7 @@ async def test_invalid_grant_marks_connection_for_reconnect(sync_context) -> Non
         assert persisted is not None
         assert persisted.status == EmailConnectionStatus.RECONNECT_REQUIRED
         assert persisted.last_sync_error_code == "invalid_grant"
+        assert persisted.last_sync_completed_at is None
 
 
 @pytest.mark.asyncio
@@ -202,3 +207,4 @@ async def test_partial_batch_failure_rolls_back_orders_and_restores_connected_st
         assert persisted is not None
         assert persisted.status == EmailConnectionStatus.CONNECTED
         assert persisted.last_sync_error_code == "sync_failed"
+        assert persisted.last_sync_completed_at is None

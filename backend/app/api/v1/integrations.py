@@ -144,7 +144,6 @@ async def authorize_gmail(
 @router.get("/callback")
 async def gmail_callback(
     request: Request,
-    code: str,
     state: str,
     session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -152,6 +151,8 @@ async def gmail_callback(
     oauth: Annotated[GoogleOAuthClient, Depends(get_google_oauth_client)],
     cipher: Annotated[TokenCipher, Depends(get_token_cipher)],
     dispatch: Annotated[Callable[[str, str], None], Depends(get_gmail_dispatcher)],
+    code: str | None = None,
+    error: str | None = None,
 ):
     _require_enabled(settings)
     nonce = request.cookies.get(OAUTH_NONCE_COOKIE)
@@ -161,6 +162,14 @@ async def gmail_callback(
         oauth_state = await state_store.consume(state, nonce)
     except InvalidOAuthState as exc:
         raise HTTPException(400, detail="Authorization state is invalid or expired") from exc
+    if error == "access_denied":
+        response = RedirectResponse(
+            f"{settings.frontend_url.rstrip('/')}/knowledge?gmail=denied", 303
+        )
+        response.delete_cookie(OAUTH_NONCE_COOKIE)
+        return response
+    if error or not code:
+        raise HTTPException(400, detail="Google authorization could not be completed")
     tokens = await oauth.exchange_code(code, oauth_state.code_verifier)
     if GMAIL_READONLY_SCOPE not in tokens.scope.split():
         raise HTTPException(400, detail="Required Gmail permission was not granted")
@@ -184,6 +193,8 @@ async def gmail_callback(
         )
         session.add(connection)
     else:
+        if not tokens.refresh_token and not connection.encrypted_refresh_token:
+            raise HTTPException(400, detail="Google did not provide an offline token")
         connection.provider_account_id = profile["emailAddress"]
         connection.email_address = profile["emailAddress"]
         connection.granted_scopes = tokens.scope

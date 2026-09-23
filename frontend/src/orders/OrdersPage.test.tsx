@@ -16,7 +16,7 @@ const order = {
   placed_at: "2026-09-20T10:00:00Z",
   currency: "INR",
   total_amount: "1299.00",
-  expected_delivery_at: null,
+  expected_delivery_at: "2026-09-25T10:00:00Z",
   delivered_at: null,
   tracking_number: "TRACK-1",
   carrier: "ATS",
@@ -24,6 +24,7 @@ const order = {
   last_source_message_at: "2026-09-21T10:00:00Z",
   items: [{ id: "i1", title: "USB-C charger", quantity: 1, unit_price: null, marketplace_product_id: null }],
   events: [],
+  last_sync_completed_at: "2026-09-24T10:00:00Z",
 };
 
 function wrapper(children: React.ReactNode) {
@@ -47,6 +48,12 @@ it("filters unified orders and shows sync freshness", async () => {
     expect.stringContaining("marketplace=flipkart"), expect.anything(),
   ));
   expect(screen.getByText(/last synced/i)).toBeVisible();
+  expect(screen.getByText("₹1,299.00")).toBeVisible();
+  expect(screen.getByText(/expected/i)).toBeVisible();
+  await userEvent.type(screen.getByLabelText(/orders since/i), "2026-09-21");
+  await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith(
+    expect.stringContaining("since=2026-09-21T00%3A00%3A00.000Z"), expect.anything(),
+  ));
 });
 
 
@@ -62,4 +69,5 @@ it("does not render a non-allow-listed marketplace link", async () => {
 
   expect(await screen.findByText(order.marketplace_order_id)).toBeVisible();
   expect(screen.queryByRole("link", { name: /open in/i })).not.toBeInTheDocument();
+  expect(screen.getByText(/last synced/i)).toBeVisible();
 });

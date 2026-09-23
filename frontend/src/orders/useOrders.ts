@@ -7,6 +7,7 @@ function orderParams(filters: OrderFilters) {
   if (filters.marketplace) params.set("marketplace", filters.marketplace);
   if (filters.status) params.set("status", filters.status);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
+  if (filters.since) params.set("since", new Date(`${filters.since}T00:00:00Z`).toISOString());
   if (filters.cursor) params.set("cursor", filters.cursor);
   const query = params.toString();
   return query ? `?${query}` : "";

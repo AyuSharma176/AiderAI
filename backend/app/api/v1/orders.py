@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -42,6 +43,7 @@ async def list_orders_endpoint(
     marketplace: Marketplace | None = None,
     status: CommerceOrderStatus | None = None,
     q: Annotated[str | None, Query(max_length=120)] = None,
+    since: datetime | None = None,
     cursor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
 ) -> CommerceOrderListResponse:
@@ -49,7 +51,7 @@ async def list_orders_endpoint(
         orders, next_cursor = await list_commerce_orders(
             session,
             user.id,
-            CommerceOrderFilters(marketplace, status, q, cursor, limit),
+            CommerceOrderFilters(marketplace, status, q, cursor, limit, since),
         )
     except InvalidOrderCursor as exc:
         raise HTTPException(422, detail="Order cursor is invalid") from exc
@@ -77,6 +79,12 @@ async def get_order_endpoint(
     except CommerceOrderNotFound as exc:
         raise HTTPException(404, detail="Order not found") from exc
     response = CommerceOrderDetailResponse.model_validate(order)
+    response.last_sync_completed_at = await session.scalar(
+        select(EmailConnection.last_sync_completed_at).where(
+            EmailConnection.user_id == user.id,
+            EmailConnection.provider == "gmail",
+        )
+    )
     response.marketplace_url = (
         validate_marketplace_url(response.marketplace_url, response.marketplace)
         if response.marketplace_url

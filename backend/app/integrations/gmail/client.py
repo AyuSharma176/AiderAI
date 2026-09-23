@@ -70,7 +70,7 @@ class GmailClient:
         params = {
             "q": (
                 f"after:{after:%Y/%m/%d} "
-                "from:(amazon.in OR flipkart.com)"
+                "(from:amazon.in OR from:flipkart.com)"
             ),
             "maxResults": "100",
         }

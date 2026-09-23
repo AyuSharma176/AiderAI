@@ -19,6 +19,7 @@ from app.models import (
     CommerceOrderStatus,
     EmailConnection,
     EmailConnectionStatus,
+    OrderEventType,
     OrderSourceEvent,
 )
 from app.models.base import utc_now
@@ -270,6 +271,10 @@ class OrderSynchronizer:
             await session.flush()
         if _STATUS_PRECEDENCE[observation.status] >= _STATUS_PRECEDENCE[order.status]:
             order.status = observation.status
+        if observation.event_type == OrderEventType.PLACED and (
+            order.placed_at is None or observation.occurred_at < order.placed_at
+        ):
+            order.placed_at = observation.occurred_at
         if is_newer:
             order.last_source_message_at = observation.occurred_at
             for field in (
@@ -320,7 +325,8 @@ class OrderSynchronizer:
                 return
             connection.status = status
             connection.last_sync_error_code = error_code
-            connection.last_sync_completed_at = self.now()
+            if error_code is None:
+                connection.last_sync_completed_at = self.now()
             if history_id:
                 connection.last_history_id = history_id
             await session.commit()
