@@ -31,8 +31,19 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://supportai:supportai@postgres:5432/supportai}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_MINUTES: ${JWT_ACCESS_TOKEN_MINUTES:-30}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173"]}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+      RETRIEVAL_TOP_K: ${RETRIEVAL_TOP_K:-5}
+      AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-10}
+      CHAT_RATE_LIMIT: ${CHAT_RATE_LIMIT:-30}
+      UPLOAD_RATE_LIMIT: ${UPLOAD_RATE_LIMIT:-10}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +62,7 @@ services:
 
   worker:
     build: ./backend
-    command: celery -A app.workers.celery_app worker --loglevel=info
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=info
     environment: *backend-environment
     depends_on:
       postgres:
@@ -66,7 +77,8 @@ services:
     build: ./frontend
     command: npm run dev -- --host 0.0.0.0
     environment:
-      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
+      VITE_MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
     depends_on:
       api:
         condition: service_healthy
@@ -81,4 +93,3 @@ volumes:
   redis_data:
   uploads:
   frontend_node_modules:
-

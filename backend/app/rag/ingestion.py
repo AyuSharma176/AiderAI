@@ -26,8 +26,9 @@ class DocumentIngestor:
         self.extract_pages = extract_pages
 
     async def process(self, document_id: UUID | str) -> None:
+        document_uuid = UUID(str(document_id))
         async with self.session_factory() as session:
-            document = await session.get(Document, document_id)
+            document = await session.get(Document, document_uuid)
             if document is None:
                 raise LookupError("Document not found")
             document.status = DocumentStatus.PROCESSING
@@ -49,7 +50,7 @@ class DocumentIngestor:
                 )
 
             async with self.session_factory() as session:
-                document = await session.get(Document, document_id)
+                document = await session.get(Document, document_uuid)
                 if document is None:
                     raise LookupError("Document not found")
                 await session.execute(
@@ -69,7 +70,7 @@ class DocumentIngestor:
                 document.error_message = None
                 await session.commit()
         except Exception as exc:
-            await self._mark_failed(document_id, exc)
+            await self._mark_failed(document_uuid, exc)
             raise
 
     async def _mark_failed(self, document_id: UUID | str, exc: Exception) -> None:
