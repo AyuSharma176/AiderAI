@@ -90,7 +90,7 @@ services:
 
   beat:
     build: ./backend
-    command: celery -A app.workers.celery_app:celery_app beat --loglevel=info
+    command: celery -A app.workers.celery_app:celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment: *backend-environment
     depends_on:
       postgres:
