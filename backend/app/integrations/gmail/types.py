@@ -7,4 +7,3 @@ class GoogleOAuthTokens(BaseModel):
     expires_in: int
     scope: str
     token_type: str = "Bearer"
-
