@@ -53,11 +53,18 @@ class GeminiGateway:
 
 
 class GoogleGenAITransport:
-    def __init__(self, api_key: str, *, model: str = "gemini-2.5-flash") -> None:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        model: str = "gemini-2.5-flash",
+        embedding_model: str = "gemini-embedding-001",
+    ) -> None:
         from google import genai
 
         self.client = genai.Client(api_key=api_key)
         self.model = model
+        self.embedding_model = embedding_model
 
     async def classify(self, messages: Sequence[ChatMessage]) -> Any:
         response = await self.client.aio.models.generate_content(
@@ -72,7 +79,7 @@ class GoogleGenAITransport:
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         response = await self.client.aio.models.embed_content(
-            model="gemini-embedding-001", contents=list(texts)
+            model=self.embedding_model, contents=list(texts)
         )
         return [list(item.values) for item in response.embeddings]
 
