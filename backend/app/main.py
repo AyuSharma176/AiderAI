@@ -8,6 +8,7 @@ from app.api.v1.conversations import router as conversations_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.health import router as health_router
 from app.api.v1.integrations import router as integrations_router
+from app.api.v1.orders import router as orders_router
 from app.core.config import get_settings
 from app.core.errors import error_response, safe_http_error
 from app.core.logging import configure_logging
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     application.include_router(chat_router)
     application.include_router(documents_router)
     application.include_router(integrations_router)
+    application.include_router(orders_router)
 
     @application.exception_handler(HTTPException)
     async def http_error_handler(_request, exc: HTTPException):
