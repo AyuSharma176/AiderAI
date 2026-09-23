@@ -15,4 +15,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         "Conversation", back_populates="user", cascade="all, delete-orphan"
     )
     orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
+    email_connections = relationship(
+        "EmailConnection", back_populates="user", cascade="all, delete-orphan"
+    )
+    commerce_orders = relationship(
+        "CommerceOrder", back_populates="user", cascade="all, delete-orphan"
+    )
     tickets = relationship("Ticket", back_populates="user", cascade="all, delete-orphan")
