@@ -1,0 +1,65 @@
+from email.utils import parseaddr
+
+from app.models import CommerceOrderStatus, Marketplace, OrderEventType
+from app.orders.parsers.base import (
+    first_match,
+    normalize_amount,
+    parse_items,
+    validate_marketplace_url,
+)
+from app.orders.types import CommerceEmail, OrderItemObservation, OrderObservation
+
+
+class FlipkartOrderParser:
+    name = "flipkart"
+    version = "1"
+
+    def matches(self, email: CommerceEmail) -> bool:
+        address = parseaddr(email.sender)[1].lower()
+        domain = address.rpartition("@")[2]
+        return domain == "flipkart.com" or domain.endswith(".flipkart.com")
+
+    def parse(self, email: CommerceEmail) -> list[OrderObservation]:
+        if not self.matches(email):
+            return []
+        content = f"{email.subject} {email.text}"
+        order_id = first_match(r"\b(OD\d{12,})\b", content)
+        event = self._event(content)
+        if not order_id or event is None:
+            return []
+        url = first_match(r"(https://[^\s<>]+)", email.text)
+        amount = first_match(r"(?:Total|Order total):\s*(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)", content)
+        status = CommerceOrderStatus(event.value)
+        return [
+            OrderObservation(
+                marketplace=Marketplace.FLIPKART,
+                marketplace_order_id=order_id,
+                event_type=event,
+                occurred_at=email.sent_at,
+                status=status,
+                items=[
+                    OrderItemObservation(title=title, quantity=quantity)
+                    for title, quantity in parse_items(email.text)
+                ],
+                currency="INR" if amount else None,
+                total_amount=normalize_amount(amount),
+                delivered_at=(
+                    email.sent_at if status == CommerceOrderStatus.DELIVERED else None
+                ),
+                marketplace_url=(
+                    validate_marketplace_url(url, Marketplace.FLIPKART) if url else None
+                ),
+            )
+        ]
+
+    @staticmethod
+    def _event(content: str) -> OrderEventType | None:
+        lowered = content.lower()
+        mappings = (
+            ("cancel", OrderEventType.CANCELLED),
+            ("out for delivery", OrderEventType.OUT_FOR_DELIVERY),
+            ("delivered", OrderEventType.DELIVERED),
+            ("shipped", OrderEventType.SHIPPED),
+            ("confirmed", OrderEventType.PLACED),
+        )
+        return next((event for marker, event in mappings if marker in lowered), None)

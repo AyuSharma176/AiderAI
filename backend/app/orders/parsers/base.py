@@ -3,11 +3,37 @@ import binascii
 import re
 from datetime import UTC, datetime
 from html.parser import HTMLParser
+from typing import Protocol
 from urllib.parse import urlsplit
 
 from app.integrations.gmail.types import GmailPayload, GmailRawMessage
 from app.models import Marketplace
-from app.orders.types import CommerceEmail
+from app.orders.types import CommerceEmail, OrderObservation
+
+
+class OrderEmailParser(Protocol):
+    def matches(self, email: CommerceEmail) -> bool: ...
+    def parse(self, email: CommerceEmail) -> list[OrderObservation]: ...
+
+
+def first_match(pattern: str, value: str, flags: int = re.IGNORECASE) -> str | None:
+    match = re.search(pattern, value, flags)
+    return match.group(1).strip() if match else None
+
+
+def parse_items(value: str) -> list[tuple[str, int]]:
+    return [
+        (match.group(1).strip(), int(match.group(2)))
+        for match in re.finditer(
+            r"(?:^|\s)Item:\s*(.+?)\s*\(Qty:\s*(\d+)\)", value, re.IGNORECASE
+        )
+    ]
+
+
+def normalize_amount(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return f"{float(value.replace(',', '')):.2f}"
 
 
 class MessageTooLargeError(ValueError):
