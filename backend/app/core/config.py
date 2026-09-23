@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
     gemini_api_key: SecretStr | None = None
     jwt_secret: SecretStr
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_minutes: int = 30
     cors_origins: list[str] = ["http://localhost:5173"]
 
     @model_validator(mode="after")
@@ -32,4 +34,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
