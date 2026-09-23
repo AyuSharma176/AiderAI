@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.conversations import router as conversations_router
+from app.api.v1.documents import router as documents_router
 from app.api.v1.health import router as health_router
 from app.core.config import get_settings
 
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     application.include_router(auth_router)
     application.include_router(conversations_router)
     application.include_router(chat_router)
+    application.include_router(documents_router)
 
     @application.exception_handler(401)
     async def unauthorized_handler(_request, exc):
