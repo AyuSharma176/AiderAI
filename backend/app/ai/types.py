@@ -2,7 +2,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, model_validator
 
-ToolName = Literal["get_order_status", "create_support_ticket", "get_customer_profile"]
+ToolName = Literal[
+    "get_order_status",
+    "create_support_ticket",
+    "get_customer_profile",
+    "list_my_orders",
+    "get_my_order",
+    "find_my_orders_by_product",
+]
 
 
 class ChatMessage(BaseModel):
@@ -23,6 +30,19 @@ class IntentDecision(BaseModel):
     tool_name: ToolName | None = None
     order_id: str | None = None
     issue: str | None = None
+    marketplace: Literal["amazon", "flipkart"] | None = None
+    status: Literal[
+        "placed",
+        "shipped",
+        "out_for_delivery",
+        "delivered",
+        "cancelled",
+        "return_update",
+        "unknown",
+    ] | None = None
+    since: str | None = None
+    limit: int | None = None
+    query: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -33,10 +53,18 @@ class IntentDecision(BaseModel):
         return value
 
     @property
-    def tool_arguments(self) -> dict[str, str]:
+    def tool_arguments(self) -> dict[str, Any]:
         return {
             key: value
-            for key, value in {"order_id": self.order_id, "issue": self.issue}.items()
+            for key, value in {
+                "order_id": self.order_id,
+                "issue": self.issue,
+                "marketplace": self.marketplace,
+                "status": self.status,
+                "since": self.since,
+                "limit": self.limit,
+                "query": self.query,
+            }.items()
             if value is not None
         }
 

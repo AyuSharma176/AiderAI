@@ -79,4 +79,14 @@ def test_intent_schema_is_supported_by_installed_google_sdk() -> None:
 
     assert schema is not None
     assert schema.additional_properties is None
-    assert set(schema.properties or {}) == {"route", "tool_name", "order_id", "issue"}
+    assert set(schema.properties or {}) == {
+        "route",
+        "tool_name",
+        "order_id",
+        "issue",
+        "marketplace",
+        "status",
+        "since",
+        "limit",
+        "query",
+    }

@@ -30,6 +30,7 @@ class CommerceOrderFilters:
     query: str | None = None
     cursor: str | None = None
     limit: int = 25
+    since: datetime | None = None
 
 
 def encode_cursor(sort_at: datetime, order_id: UUID) -> str:
@@ -62,6 +63,8 @@ async def list_commerce_orders(
         statement = statement.where(CommerceOrder.marketplace == filters.marketplace)
     if filters.status:
         statement = statement.where(CommerceOrder.status == filters.status)
+    if filters.since:
+        statement = statement.where(sort_at >= filters.since)
     if filters.query:
         pattern = f"%{_escape_like(filters.query.strip())}%"
         item_match = exists(

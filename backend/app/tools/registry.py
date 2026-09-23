@@ -8,14 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.tools.schemas import (
     CreateTicketInput,
     CustomerProfileInput,
+    FindMyOrdersByProductInput,
+    GetMyOrderInput,
+    ListMyOrdersInput,
     OrderStatusInput,
     ToolResult,
 )
 from app.tools.support import (
     ToolValidationError,
     create_support_ticket,
+    find_my_orders_by_product,
     get_customer_profile,
+    get_my_order,
     get_order_status,
+    list_my_orders,
 )
 
 
@@ -47,10 +53,43 @@ async def _ticket_handler(
     )
 
 
+def _without_model_identity(arguments: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in arguments.items() if key != "user_id"}
+
+
+async def _list_my_orders_handler(
+    arguments: dict[str, Any], user_id: UUID, session: AsyncSession
+) -> ToolResult:
+    return await list_my_orders(
+        ListMyOrdersInput.model_validate(_without_model_identity(arguments)), user_id, session
+    )
+
+
+async def _get_my_order_handler(
+    arguments: dict[str, Any], user_id: UUID, session: AsyncSession
+) -> ToolResult:
+    return await get_my_order(
+        GetMyOrderInput.model_validate(_without_model_identity(arguments)), user_id, session
+    )
+
+
+async def _find_my_orders_handler(
+    arguments: dict[str, Any], user_id: UUID, session: AsyncSession
+) -> ToolResult:
+    return await find_my_orders_by_product(
+        FindMyOrdersByProductInput.model_validate(_without_model_identity(arguments)),
+        user_id,
+        session,
+    )
+
+
 TOOL_REGISTRY: dict[str, ToolHandler] = {
     "get_order_status": _order_handler,
     "get_customer_profile": _profile_handler,
     "create_support_ticket": _ticket_handler,
+    "list_my_orders": _list_my_orders_handler,
+    "get_my_order": _get_my_order_handler,
+    "find_my_orders_by_product": _find_my_orders_handler,
 }
 
 
