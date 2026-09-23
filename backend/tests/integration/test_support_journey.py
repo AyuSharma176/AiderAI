@@ -61,9 +61,7 @@ async def test_support_journey(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     async def reject_tools(name, arguments, user_id):
         raise AssertionError("Knowledge journey must not execute a tool")
 
-    graph = build_support_graph(
-        AgentDependencies(fake_gemini, retrieve_policy, reject_tools)
-    )
+    graph = build_support_graph(AgentDependencies(fake_gemini, retrieve_policy, reject_tools))
     app = create_app()
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_document_dispatcher] = lambda: queued.append
@@ -99,9 +97,7 @@ async def test_support_journey(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
             ],
         )
         await ingestor.process(document["id"])
-        ready = await client.get(
-            f"/api/v1/documents/{document['id']}", headers=headers
-        )
+        ready = await client.get(f"/api/v1/documents/{document['id']}", headers=headers)
         assert ready.json()["status"] == "ready"
 
         chat = await client.post(

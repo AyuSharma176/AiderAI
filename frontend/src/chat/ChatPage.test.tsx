@@ -19,11 +19,11 @@ function streamResponse(frames: string[]) {
 }
 
 
-function renderChat() {
+function renderChat(entry = "/chat") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter><ChatPage /></MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}><ChatPage /></MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -71,4 +71,33 @@ it("preserves a failed message and offers retry", async () => {
 
   expect(await screen.findByText("Please help")).toBeVisible();
   expect(screen.getByRole("button", { name: /retry/i })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: /retry/i }));
+  expect(await screen.findByRole("button", { name: /retry/i })).toBeVisible();
+  expect(screen.getAllByText("Please help")).toHaveLength(1);
+});
+
+
+it("loads a selected conversation and continues it", async () => {
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({
+      id: "c-existing",
+      title: "Refund",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+      messages: [{ id: "m1", role: "assistant", content: "Earlier answer", citations: [], created_at: "2026-01-01T00:00:00Z" }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    .mockResolvedValueOnce(streamResponse([
+      'event: token\ndata: {"text":"Continued"}\n\n',
+      'event: complete\ndata: {"conversation_id":"c-existing"}\n\n',
+    ]));
+  vi.stubGlobal("fetch", fetchMock);
+  const user = userEvent.setup();
+  renderChat("/chat?conversation=c-existing");
+
+  expect(await screen.findByText("Earlier answer")).toBeVisible();
+  await user.type(screen.getByLabelText(/message supportai/i), "Follow up");
+  await user.click(screen.getByRole("button", { name: /send message/i }));
+  expect(await screen.findByText("Continued")).toBeVisible();
+  const request = fetchMock.mock.calls[1][1] as RequestInit;
+  expect(JSON.parse(String(request.body)).conversation_id).toBe("c-existing");
 });

@@ -37,4 +37,3 @@ def test_owned_records_reference_users() -> None:
     assert Conversation.__table__.c.user_id.foreign_keys
     assert Order.__table__.c.user_id.foreign_keys
     assert Ticket.__table__.c.user_id.foreign_keys
-

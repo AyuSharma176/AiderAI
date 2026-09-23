@@ -1,3 +1,4 @@
+import asyncio
 from uuid import uuid4
 
 import pytest
@@ -118,3 +119,35 @@ async def test_invalid_tool_arguments_are_not_silently_accepted() -> None:
 
     with pytest.raises(ToolValidationError):
         await graph.ainvoke(base_state("create a ticket"))
+
+
+@pytest.mark.asyncio
+async def test_token_event_is_emitted_before_generation_completes() -> None:
+    release = asyncio.Event()
+    emitted = asyncio.Queue()
+
+    class BlockingGateway(FakeGateway):
+        async def stream_answer(self, request):
+            yield "first"
+            await release.wait()
+            yield "second"
+
+    graph = build_support_graph(
+        AgentDependencies(
+            BlockingGateway(IntentDecision(route="direct")),
+            FakeRetriever(),
+            FakeTools(),
+            emit_event=emitted.put,
+        )
+    )
+    execution = asyncio.create_task(graph.ainvoke(base_state("Hello")))
+    while True:
+        event = await asyncio.wait_for(emitted.get(), timeout=1)
+        if event.type == "token":
+            break
+
+    assert event.data["text"] == "first"
+    assert not execution.done()
+    release.set()
+    result = await execution
+    assert result["answer"] == "firstsecond"

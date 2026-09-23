@@ -15,9 +15,7 @@ class TextChunk:
     text: str
 
 
-def chunk_pages(
-    pages: Sequence[PageText], size: int = 1000, overlap: int = 150
-) -> list[TextChunk]:
+def chunk_pages(pages: Sequence[PageText], size: int = 1000, overlap: int = 150) -> list[TextChunk]:
     if size <= 0:
         raise ValueError("Chunk size must be positive")
     if overlap < 0 or overlap >= size:

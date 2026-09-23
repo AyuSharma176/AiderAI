@@ -5,6 +5,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
+
+
 @pytest.fixture
 def app(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("APP_ENV", "test")

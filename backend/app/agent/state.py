@@ -10,7 +10,7 @@ from app.tools.schemas import ToolResult
 
 
 class AgentEvent(BaseModel):
-    type: Literal["stage", "citation", "token"]
+    type: Literal["conversation", "stage", "citation", "token"]
     data: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -28,6 +28,8 @@ class AgentDependencies:
     gateway: GatewayProtocol
     retriever: Retriever
     execute_tool: ToolExecutor
+    retrieval_top_k: int = 5
+    emit_event: Callable[[AgentEvent], Awaitable[None]] | None = None
 
 
 class ConversationState(TypedDict, total=False):

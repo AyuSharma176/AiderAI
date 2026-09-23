@@ -22,9 +22,7 @@ def get_readiness_checker() -> Callable[[], Awaitable[dict[str, bool]]]:
 
 @router.get("/ready")
 async def readiness(
-    checker: Annotated[
-        Callable[[], Awaitable[dict[str, bool]]], Depends(get_readiness_checker)
-    ],
+    checker: Annotated[Callable[[], Awaitable[dict[str, bool]]], Depends(get_readiness_checker)],
 ):
     dependencies = await checker()
     if not all(dependencies.values()):

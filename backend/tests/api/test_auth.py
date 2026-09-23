@@ -42,9 +42,7 @@ async def test_register_login_and_me(client: httpx.AsyncClient) -> None:
     assert registered.status_code == 201
     token = registered.json()["access_token"]
 
-    me = await client.get(
-        "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-    )
+    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
     assert me.json()["email"] == "person@example.com"
 
@@ -78,9 +76,7 @@ async def test_duplicate_email_returns_stable_error(client: httpx.AsyncClient) -
 @pytest.mark.asyncio
 async def test_invalid_token_paths_are_indistinguishable(client: httpx.AsyncClient) -> None:
     for token in ("not-a-token", "ey.invalid.forged"):
-        response = await client.get(
-            "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        response = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 401
         assert response.json() | {"request_id": "ignored"} == {
             "code": "invalid_token",

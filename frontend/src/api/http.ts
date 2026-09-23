@@ -14,6 +14,21 @@ export class ApiError extends Error {
   }
 }
 
+export async function authenticatedFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  if (response.status === 401 && token) {
+    clearSession();
+    window.dispatchEvent(new Event("supportai:unauthorized"));
+  }
+  return response;
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
@@ -25,17 +40,13 @@ export async function apiRequest<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const response = await authenticatedFetch(path, { ...init, headers });
   if (!response.ok) {
     let body: ApiErrorBody = { code: "request_failed", message: "Request failed" };
     try {
       body = (await response.json()) as ApiErrorBody;
     } catch {
       // Use the stable fallback without exposing response content.
-    }
-    if (response.status === 401 && token) {
-      clearSession();
-      window.dispatchEvent(new Event("supportai:unauthorized"));
     }
     throw new ApiError(response.status, body.code, body.message, body.request_id);
   }

@@ -25,7 +25,7 @@ class DocumentIngestor:
         self.gateway = gateway
         self.extract_pages = extract_pages
 
-    async def process(self, document_id: UUID | str) -> None:
+    async def process(self, document_id: UUID | str, *, mark_failure: bool = True) -> None:
         document_uuid = UUID(str(document_id))
         async with self.session_factory() as session:
             document = await session.get(Document, document_uuid)
@@ -45,9 +45,7 @@ class DocumentIngestor:
             embeddings: list[list[float]] = []
             for start in range(0, len(chunks), 64):
                 batch = chunks[start : start + 64]
-                embeddings.extend(
-                    await self.gateway.embed_texts([chunk.text for chunk in batch])
-                )
+                embeddings.extend(await self.gateway.embed_texts([chunk.text for chunk in batch]))
 
             async with self.session_factory() as session:
                 document = await session.get(Document, document_uuid)
@@ -70,10 +68,11 @@ class DocumentIngestor:
                 document.error_message = None
                 await session.commit()
         except Exception as exc:
-            await self._mark_failed(document_uuid, exc)
+            if mark_failure:
+                await self.mark_failed(document_uuid, exc)
             raise
 
-    async def _mark_failed(self, document_id: UUID | str, exc: Exception) -> None:
+    async def mark_failed(self, document_id: UUID | str, exc: Exception) -> None:
         message = (
             "PDF contains no readable text."
             if isinstance(exc, EmptyPDFError)

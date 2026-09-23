@@ -14,9 +14,7 @@ class Settings(BaseSettings):
     )
 
     app_env: Literal["development", "test", "production"] = "development"
-    database_url: str = (
-        "postgresql+asyncpg://supportai:supportai@postgres:5432/supportai"
-    )
+    database_url: str = "postgresql+asyncpg://supportai:supportai@postgres:5432/supportai"
     redis_url: str = "redis://redis:6379/0"
     gemini_api_key: SecretStr | None = None
     gemini_chat_model: str = "gemini-2.5-flash"

@@ -217,7 +217,7 @@ On a provider failure the stream terminates with one `error` event, and no parti
 - Passwords use Argon2; JWTs are short-lived and contain a typed user UUID.
 - Conversation, message, order, and ticket access is ownership-scoped in database queries.
 - PDF extension, MIME type, signature, and streamed byte size are all checked before indexing. Storage names are UUIDs and paths are never returned by the API.
-- Retrieved PDF text is wrapped in explicit `UNTRUSTED_REFERENCE` delimiters and cannot override system policy.
+- Retrieved PDF text is serialized as reference data while policy is sent through Gemini's `system_instruction`. This materially reduces prompt-injection risk; model output is still untrusted and important account details should be verified.
 - The tool registry has exactly three names and never trusts a model-supplied user ID.
 - Error bodies and logs omit provider details, credentials, prompts, authorization headers, cookies, and filesystem paths.
 - Redis keys separate auth, chat, and upload limits. Rate-limit responses include `Retry-After`.

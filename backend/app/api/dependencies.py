@@ -9,7 +9,6 @@ from app.core.database import get_db
 from app.core.security import InvalidTokenError, decode_access_token
 from app.models import User
 
-
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -36,4 +35,3 @@ async def get_current_user(
             detail={"code": "invalid_token", "message": "Invalid access token"},
         )
     return user
-

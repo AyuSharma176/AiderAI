@@ -11,9 +11,7 @@ class ConversationNotFoundError(LookupError):
     pass
 
 
-async def create_conversation(
-    session: AsyncSession, user: User, title: str
-) -> Conversation:
+async def create_conversation(session: AsyncSession, user: User, title: str) -> Conversation:
     conversation = Conversation(user_id=user.id, title=title.strip() or "New conversation")
     session.add(conversation)
     await session.commit()
@@ -21,9 +19,7 @@ async def create_conversation(
     return conversation
 
 
-async def list_conversations(
-    session: AsyncSession, user: User
-) -> list[Conversation]:
+async def list_conversations(session: AsyncSession, user: User) -> list[Conversation]:
     result = await session.scalars(
         select(Conversation)
         .where(Conversation.user_id == user.id)
@@ -48,9 +44,7 @@ async def get_conversation(
     return conversation
 
 
-async def delete_conversation(
-    session: AsyncSession, user: User, conversation_id: UUID
-) -> None:
+async def delete_conversation(session: AsyncSession, user: User, conversation_id: UUID) -> None:
     result = await session.execute(
         delete(Conversation).where(
             Conversation.id == conversation_id,

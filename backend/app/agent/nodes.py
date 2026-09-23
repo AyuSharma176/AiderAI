@@ -1,8 +1,10 @@
 from collections.abc import Sequence
 
+import structlog
+
 from app.agent.state import AgentDependencies, AgentEvent, ConversationState
 from app.ai.prompts import build_answer_prompt
-from app.ai.types import AnswerRequest, ChatMessage
+from app.ai.types import ChatMessage
 
 
 def latest_user_text(messages: Sequence[ChatMessage]) -> str:
@@ -12,20 +14,28 @@ def latest_user_text(messages: Sequence[ChatMessage]) -> str:
     raise ValueError("Conversation requires a user message")
 
 
-def _append_events(
-    state: ConversationState, *events: AgentEvent
-) -> list[AgentEvent]:
+def _append_events(state: ConversationState, *events: AgentEvent) -> list[AgentEvent]:
     return [*state.get("events", []), *events]
+
+
+async def _emit(dependencies: AgentDependencies, event: AgentEvent) -> None:
+    structlog.get_logger().info(
+        "agent_event",
+        event_type=event.type,
+        **{key: value for key, value in event.data.items() if key != "text"},
+    )
+    if dependencies.emit_event is not None:
+        await dependencies.emit_event(event)
 
 
 def make_analyze_intent(dependencies: AgentDependencies):
     async def analyze_intent(state: ConversationState) -> ConversationState:
         intent = await dependencies.gateway.classify_intent(state["messages"])
+        event = AgentEvent(type="stage", data={"name": "analyzing"})
+        await _emit(dependencies, event)
         return {
             "intent": intent,
-            "events": _append_events(
-                state, AgentEvent(type="stage", data={"name": "analyzing"})
-            ),
+            "events": _append_events(state, event),
         }
 
     return analyze_intent
@@ -33,7 +43,9 @@ def make_analyze_intent(dependencies: AgentDependencies):
 
 def make_retrieve(dependencies: AgentDependencies):
     async def retrieve_context(state: ConversationState) -> ConversationState:
-        chunks = await dependencies.retriever(latest_user_text(state["messages"]), 5)
+        chunks = await dependencies.retriever(
+            latest_user_text(state["messages"]), dependencies.retrieval_top_k
+        )
         citation_events = [
             AgentEvent(
                 type="citation",
@@ -45,14 +57,18 @@ def make_retrieve(dependencies: AgentDependencies):
             )
             for chunk in chunks
         ]
+        stage = AgentEvent(
+            type="stage",
+            data={"name": "retrieving", "retrieval_count": len(chunks)},
+        )
+        await _emit(dependencies, stage)
+        for event in citation_events:
+            await _emit(dependencies, event)
         return {
             "citations": chunks,
             "events": _append_events(
                 state,
-                AgentEvent(
-                    type="stage",
-                    data={"name": "retrieving", "retrieval_count": len(chunks)},
-                ),
+                stage,
                 *citation_events,
             ),
         }
@@ -70,14 +86,13 @@ def make_execute_tool(dependencies: AgentDependencies):
             intent.tool_arguments,
             state["user_id"],
         )
+        event = AgentEvent(type="stage", data={"name": "using_tool", "tool": intent.tool_name})
+        await _emit(dependencies, event)
         return {
             "tool_result": result,
             "events": _append_events(
                 state,
-                AgentEvent(
-                    type="stage",
-                    data={"name": "using_tool", "tool": intent.tool_name},
-                ),
+                event,
             ),
         }
 
@@ -87,19 +102,22 @@ def make_execute_tool(dependencies: AgentDependencies):
 def make_generate_response(dependencies: AgentDependencies):
     async def generate_response(state: ConversationState) -> ConversationState:
         question = latest_user_text(state["messages"])
-        prompt = build_answer_prompt(question, state.get("citations", []))
-        if tool_result := state.get("tool_result"):
-            prompt += (
-                "\n\nTRUSTED_TOOL_RESULT:\n"
-                + tool_result.model_dump_json(exclude_none=True)
-            )
-        tokens: list[str] = []
-        events = _append_events(
-            state, AgentEvent(type="stage", data={"name": "generating"})
+        tool_result = state.get("tool_result")
+        request = build_answer_prompt(
+            question,
+            state.get("citations", []),
+            state["messages"],
+            tool_result.model_dump(mode="json", exclude_none=True) if tool_result else None,
         )
-        async for token in dependencies.gateway.stream_answer(AnswerRequest(prompt=prompt)):
+        tokens: list[str] = []
+        stage = AgentEvent(type="stage", data={"name": "generating"})
+        await _emit(dependencies, stage)
+        events = _append_events(state, stage)
+        async for token in dependencies.gateway.stream_answer(request):
             tokens.append(token)
-            events.append(AgentEvent(type="token", data={"text": token}))
+            event = AgentEvent(type="token", data={"text": token})
+            events.append(event)
+            await _emit(dependencies, event)
         return {"answer": "".join(tokens), "events": events}
 
     return generate_response

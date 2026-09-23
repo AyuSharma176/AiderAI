@@ -39,9 +39,7 @@ async def tool_context():
 async def test_owned_order_returns_serializable_status(tool_context) -> None:
     registry, _, user_a, _, order_a, _ = tool_context
 
-    result = await registry.execute(
-        "get_order_status", {"order_id": " ord-1001 "}, user_a.id
-    )
+    result = await registry.execute("get_order_status", {"order_id": " ord-1001 "}, user_a.id)
 
     assert result.data == {
         "order_id": order_a.order_number,
@@ -55,18 +53,14 @@ async def test_foreign_order_is_indistinguishable_from_missing(tool_context) -> 
     registry, _, user_a, _, _, order_b = tool_context
 
     with pytest.raises(ToolNotFoundError):
-        await registry.execute(
-            "get_order_status", {"order_id": order_b.order_number}, user_a.id
-        )
+        await registry.execute("get_order_status", {"order_id": order_b.order_number}, user_a.id)
 
 
 @pytest.mark.asyncio
 async def test_profile_ignores_model_supplied_identity(tool_context) -> None:
     registry, _, user_a, user_b, _, _ = tool_context
 
-    result = await registry.execute(
-        "get_customer_profile", {"user_id": str(user_b.id)}, user_a.id
-    )
+    result = await registry.execute("get_customer_profile", {"user_id": str(user_b.id)}, user_a.id)
 
     assert result.data == {
         "id": str(user_a.id),

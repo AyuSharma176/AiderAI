@@ -18,9 +18,7 @@ async def test_request_id_is_echoed(app) -> None:
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.get(
-            "/health/live", headers={"X-Request-ID": "req-test-123"}
-        )
+        response = await client.get("/health/live", headers={"X-Request-ID": "req-test-123"})
 
     assert response.headers["X-Request-ID"] == "req-test-123"
 

@@ -10,6 +10,7 @@ from app.api.v1.health import router as health_router
 from app.core.config import get_settings
 from app.core.errors import error_response, safe_http_error
 from app.core.logging import configure_logging
+from app.middleware.body_limit import UploadBodyLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.services.rate_limit import RateLimitBackendError, RateLimitExceeded
 
@@ -19,6 +20,7 @@ def create_app() -> FastAPI:
     configure_logging()
     application = FastAPI(title="SupportAI API", version="0.1.0")
     application.add_middleware(RequestContextMiddleware)
+    application.add_middleware(UploadBodyLimitMiddleware, max_bytes=settings.max_upload_bytes)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -39,9 +41,7 @@ def create_app() -> FastAPI:
 
     @application.exception_handler(RequestValidationError)
     async def validation_error_handler(_request, _exc: RequestValidationError):
-        return error_response(
-            422, "validation_error", "Request validation failed"
-        )
+        return error_response(422, "validation_error", "Request validation failed")
 
     @application.exception_handler(RateLimitExceeded)
     async def rate_limit_handler(_request, exc: RateLimitExceeded):
@@ -63,6 +63,7 @@ def create_app() -> FastAPI:
     @application.exception_handler(Exception)
     async def unexpected_error_handler(_request, _exc: Exception):
         return error_response(500, "internal_error", "An unexpected error occurred")
+
     return application
 
 

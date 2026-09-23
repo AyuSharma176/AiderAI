@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterator, Sequence
+from time import monotonic
 from typing import Any, Protocol
 
+import structlog
 from pydantic import ValidationError
 
 from app.ai.types import AnswerRequest, ChatMessage, IntentDecision
@@ -25,8 +27,15 @@ class GeminiGateway:
         self.transport = transport
 
     async def classify_intent(self, messages: Sequence[ChatMessage]) -> IntentDecision:
+        started = monotonic()
         try:
-            return IntentDecision.model_validate(await self.transport.classify(messages))
+            decision = IntentDecision.model_validate(await self.transport.classify(messages))
+            structlog.get_logger().info(
+                "provider_classification_completed",
+                latency_ms=int((monotonic() - started) * 1000),
+                route=decision.route,
+            )
+            return decision
         except ValidationError as exc:
             raise AIResponseError("AI service returned an invalid response") from exc
         except Exception as exc:
@@ -36,11 +45,17 @@ class GeminiGateway:
         if not texts:
             return []
         try:
+            started = monotonic()
             vectors = await self.transport.embed(texts)
         except Exception as exc:
             raise AIUnavailableError("AI service is temporarily unavailable") from exc
-        if len(vectors) != len(texts):
+        if len(vectors) != len(texts) or any(len(vector) != 768 for vector in vectors):
             raise AIResponseError("AI service returned an invalid response")
+        structlog.get_logger().info(
+            "provider_embedding_completed",
+            latency_ms=int((monotonic() - started) * 1000),
+            result_count=len(vectors),
+        )
         return vectors
 
     async def stream_answer(self, request: AnswerRequest) -> AsyncIterator[str]:
@@ -79,13 +94,17 @@ class GoogleGenAITransport:
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         response = await self.client.aio.models.embed_content(
-            model=self.embedding_model, contents=list(texts)
+            model=self.embedding_model,
+            contents=list(texts),
+            config={"output_dimensionality": 768},
         )
         return [list(item.values) for item in response.embeddings]
 
     async def stream(self, request: AnswerRequest) -> AsyncIterator[str]:
         async for chunk in await self.client.aio.models.generate_content_stream(
-            model=self.model, contents=request.prompt
+            model=self.model,
+            contents=request.prompt,
+            config={"system_instruction": request.system_instruction},
         ):
             if chunk.text:
                 yield chunk.text

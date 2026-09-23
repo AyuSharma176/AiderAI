@@ -4,12 +4,13 @@ from typing import Annotated, Protocol
 from fastapi import Depends, Request
 from redis.asyncio import Redis
 
+from app.api.dependencies import get_current_user
 from app.core.config import Settings, get_settings
+from app.models import User
 
 
 class RedisCounter(Protocol):
-    async def incr(self, key: str) -> int: ...
-    async def expire(self, key: str, seconds: int) -> bool: ...
+    async def eval(self, script: str, numkeys: int, *keys_and_args) -> int: ...
     async def ttl(self, key: str) -> int: ...
 
 
@@ -31,18 +32,26 @@ class RateLimiter:
     async def check(self, scope: str, identity: str, *, limit: int) -> None:
         key = f"rate:{scope}:{identity}"
         try:
-            count = await self.redis.incr(key)
-            if count == 1:
-                await self.redis.expire(key, self.window_seconds)
+            count = await self.redis.eval(
+                """
+                local count = redis.call('INCR', KEYS[1])
+                local ttl = redis.call('TTL', KEYS[1])
+                if count == 1 or ttl < 0 then
+                    redis.call('EXPIRE', KEYS[1], ARGV[1])
+                end
+                return count
+                """,
+                1,
+                key,
+                self.window_seconds,
+            )
             if count > limit:
                 retry_after = await self.redis.ttl(key)
                 raise RateLimitExceeded(max(1, retry_after))
         except RateLimitExceeded:
             raise
         except Exception as exc:
-            raise RateLimitBackendError(
-                "Rate limiting is temporarily unavailable"
-            ) from exc
+            raise RateLimitBackendError("Rate limiting is temporarily unavailable") from exc
 
 
 @lru_cache
@@ -51,8 +60,7 @@ def get_redis_client() -> Redis:
 
 
 def _identity(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For", "").split(",", maxsplit=1)[0].strip()
-    return forwarded or (request.client.host if request.client else "unknown")
+    return request.client.host if request.client else "unknown"
 
 
 async def _check(
@@ -77,13 +85,21 @@ async def enforce_chat_rate_limit(
     request: Request,
     redis: Annotated[RedisCounter, Depends(get_redis_client)],
     settings: Annotated[Settings, Depends(get_settings)],
+    user: Annotated[User, Depends(get_current_user)],
 ) -> None:
-    await _check(request, redis, settings, "chat", settings.chat_rate_limit)
+    if settings.app_env != "test":
+        await RateLimiter(redis, window_seconds=settings.rate_limit_window_seconds).check(
+            "chat", str(user.id), limit=settings.chat_rate_limit
+        )
 
 
 async def enforce_upload_rate_limit(
     request: Request,
     redis: Annotated[RedisCounter, Depends(get_redis_client)],
     settings: Annotated[Settings, Depends(get_settings)],
+    user: Annotated[User, Depends(get_current_user)],
 ) -> None:
-    await _check(request, redis, settings, "upload", settings.upload_rate_limit)
+    if settings.app_env != "test":
+        await RateLimiter(redis, window_seconds=settings.rate_limit_window_seconds).check(
+            "upload", str(user.id), limit=settings.upload_rate_limit
+        )

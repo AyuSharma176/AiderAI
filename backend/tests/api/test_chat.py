@@ -9,7 +9,7 @@ from app.ai.types import ContextChunk
 from app.api.dependencies import get_current_user
 from app.api.v1.chat import get_chat_graph
 from app.core.database import get_db
-from app.models import Base, Message, MessageRole, User
+from app.models import AgentExecutionLog, Base, Message, MessageRole, User
 
 
 class SuccessfulGraph:
@@ -81,7 +81,9 @@ async def test_stream_sequence_and_successful_persistence(chat_context) -> None:
     assert body.index("event: token") < body.index("event: complete")
     async with sessions() as session:
         roles = list((await session.scalars(select(Message.role))).all())
+        log_count = await session.scalar(select(func.count()).select_from(AgentExecutionLog))
     assert roles == [MessageRole.USER, MessageRole.ASSISTANT]
+    assert log_count == 1
 
 
 @pytest.mark.asyncio
@@ -91,17 +93,13 @@ async def test_stream_failure_is_typed_and_does_not_save_partial_assistant(
     client, sessions, app = chat_context
     app.dependency_overrides[get_chat_graph] = lambda: FailingGraph()
 
-    async with client.stream(
-        "POST", "/api/v1/chat/message", json={"content": "hello"}
-    ) as response:
+    async with client.stream("POST", "/api/v1/chat/message", json={"content": "hello"}) as response:
         body = "".join([chunk async for chunk in response.aiter_text()])
 
     assert "event: error" in body
     assert '"code":"ai_unavailable"' in body
     async with sessions() as session:
         count = await session.scalar(
-            select(func.count()).select_from(Message).where(
-                Message.role == MessageRole.ASSISTANT
-            )
+            select(func.count()).select_from(Message).where(Message.role == MessageRole.ASSISTANT)
         )
     assert count == 0

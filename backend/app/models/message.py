@@ -2,7 +2,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, JSON, Text
+from sqlalchemy import JSON, Enum, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -24,6 +24,10 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     content: Mapped[str] = mapped_column(Text)
     citations: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
     tool_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    client_message_id: Mapped[UUID | None] = mapped_column(nullable=True)
 
     conversation = relationship("Conversation", back_populates="messages")
 
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "client_message_id", name="uq_message_client_attempt"),
+    )

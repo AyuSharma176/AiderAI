@@ -14,4 +14,3 @@ class Ticket(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(40), default="open")
 
     user = relationship("User", back_populates="tickets")
-

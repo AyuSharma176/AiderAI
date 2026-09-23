@@ -21,9 +21,7 @@ class DocumentNotFoundError(LookupError):
     pass
 
 
-async def store_pdf(
-    session: AsyncSession, upload: UploadFile, settings: Settings
-) -> Document:
+async def store_pdf(session: AsyncSession, upload: UploadFile, settings: Settings) -> Document:
     filename = (upload.filename or "").strip()
     if Path(filename).suffix.lower() != ".pdf" or upload.content_type != "application/pdf":
         raise InvalidPDFError("Choose a PDF file")

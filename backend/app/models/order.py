@@ -15,4 +15,3 @@ class Order(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     tracking_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     user = relationship("User", back_populates="orders")
-

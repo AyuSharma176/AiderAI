@@ -1,7 +1,6 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel, model_validator
 
 ToolName = Literal["get_order_status", "create_support_ticket", "get_customer_profile"]
 
@@ -22,9 +21,29 @@ class ContextChunk(BaseModel):
 class IntentDecision(BaseModel):
     route: Literal["knowledge", "tool", "direct"]
     tool_name: ToolName | None = None
-    tool_arguments: dict[str, str] = Field(default_factory=dict)
+    order_id: str | None = None
+    issue: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_arguments(cls, value: Any) -> Any:
+        if isinstance(value, dict) and isinstance(value.get("tool_arguments"), dict):
+            value = {**value, **value["tool_arguments"]}
+            value.pop("tool_arguments", None)
+        return value
+
+    @property
+    def tool_arguments(self) -> dict[str, str]:
+        return {
+            key: value
+            for key, value in {"order_id": self.order_id, "issue": self.issue}.items()
+            if value is not None
+        }
 
 
 class AnswerRequest(BaseModel):
     prompt: str
+    system_instruction: str = "You are a customer-support assistant."
 
+    def __contains__(self, value: str) -> bool:
+        return value in self.prompt or value in self.system_instruction

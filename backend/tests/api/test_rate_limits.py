@@ -21,10 +21,19 @@ class FakeRedis:
     async def ttl(self, key: str) -> int:
         return 42
 
+    async def eval(self, _script: str, _numkeys: int, key: str, seconds: int) -> int:
+        count = await self.incr(key)
+        if count == 1:
+            await self.expire(key, seconds)
+        return count
+
 
 class UnavailableRedis:
-    async def incr(self, key: str) -> int:
+    async def eval(self, *args) -> int:
         raise ConnectionError("redis password=secret")
+
+    async def ttl(self, key: str) -> int:
+        return -1
 
 
 @pytest.mark.asyncio

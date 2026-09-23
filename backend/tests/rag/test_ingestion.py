@@ -39,16 +39,16 @@ async def test_reprocessing_replaces_chunks(tmp_path: Path) -> None:
     await ingestor.process(document_id)
     async with sessions() as session:
         first_count = await session.scalar(
-            select(func.count()).select_from(DocumentChunk).where(
-                DocumentChunk.document_id == document_id
-            )
+            select(func.count())
+            .select_from(DocumentChunk)
+            .where(DocumentChunk.document_id == document_id)
         )
     await ingestor.process(document_id)
     async with sessions() as session:
         second_count = await session.scalar(
-            select(func.count()).select_from(DocumentChunk).where(
-                DocumentChunk.document_id == document_id
-            )
+            select(func.count())
+            .select_from(DocumentChunk)
+            .where(DocumentChunk.document_id == document_id)
         )
         persisted = await session.get(Document, document_id)
 

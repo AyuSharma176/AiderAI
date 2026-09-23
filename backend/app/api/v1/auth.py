@@ -17,12 +17,13 @@ from app.services.auth import (
 )
 from app.services.rate_limit import enforce_auth_rate_limit
 
-
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 def auth_response(user: User) -> AuthResponse:
-    return AuthResponse(access_token=create_access_token(user.id), user=UserResponse.model_validate(user))
+    return AuthResponse(
+        access_token=create_access_token(user.id), user=UserResponse.model_validate(user)
+    )
 
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
@@ -34,9 +35,7 @@ async def register(
     try:
         return auth_response(await register_user(session, request))
     except EmailExistsError:
-        return error_response(
-            409, "email_exists", "An account with this email already exists"
-        )
+        return error_response(409, "email_exists", "An account with this email already exists")
 
 
 @router.post("/login", response_model=AuthResponse)

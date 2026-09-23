@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -20,4 +20,3 @@ class AgentExecutionLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     tool_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     safe_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-

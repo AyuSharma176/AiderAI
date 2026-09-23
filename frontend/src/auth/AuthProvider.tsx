@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import type { AuthResponse, User } from "../api/types";
+import { queryClient } from "../api/queryClient";
 import { clearSession, getAccessToken, getStoredUser, saveSession } from "./storage";
 
 interface AuthContextValue {
@@ -25,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getStoredUser<User>());
 
   const logout = useCallback(() => {
+    void queryClient.cancelQueries();
+    queryClient.clear();
     clearSession();
     setToken(null);
     setUser(null);
@@ -36,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   const completeAuthentication = useCallback((response: AuthResponse) => {
+    queryClient.clear();
     saveSession(response.access_token, response.user);
     setToken(response.access_token);
     setUser(response.user);

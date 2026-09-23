@@ -42,7 +42,9 @@ async def _profile_handler(
 async def _ticket_handler(
     arguments: dict[str, Any], user_id: UUID, session: AsyncSession
 ) -> ToolResult:
-    return await create_support_ticket(CreateTicketInput.model_validate(arguments), user_id, session)
+    return await create_support_ticket(
+        CreateTicketInput.model_validate(arguments), user_id, session
+    )
 
 
 TOOL_REGISTRY: dict[str, ToolHandler] = {
@@ -71,7 +73,5 @@ class ToolRegistry:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def execute(
-        self, name: str, arguments: dict[str, Any], user_id: UUID
-    ) -> ToolResult:
+    async def execute(self, name: str, arguments: dict[str, Any], user_id: UUID) -> ToolResult:
         return await execute_tool(name, arguments, user_id, self.session)

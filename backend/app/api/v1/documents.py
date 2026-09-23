@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user
 from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.errors import error_response
-from app.models import User
+from app.models import DocumentStatus, User
 from app.schemas.document import DocumentResponse
 from app.services.document import (
     DocumentNotFoundError,
@@ -45,7 +45,38 @@ async def upload_document(
         return error_response(422, "invalid_pdf", str(exc))
     except FileTooLargeError as exc:
         return error_response(413, "file_too_large", str(exc))
-    dispatch(str(document.id))
+    try:
+        dispatch(str(document.id))
+    except Exception:  # noqa: BLE001 - broker clients expose backend-specific errors
+        document.status = DocumentStatus.FAILED
+        document.error_message = "Document could not be queued. Please retry."
+        await session.commit()
+        return error_response(503, "queue_unavailable", document.error_message)
+    return DocumentResponse.model_validate(document)
+
+
+@router.post("/{document_id}/retry", response_model=DocumentResponse, status_code=202)
+async def retry_document(
+    document_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(get_current_user)],
+    dispatch: Annotated[DocumentDispatcher, Depends(get_document_dispatcher)],
+    _rate_limit: Annotated[None, Depends(enforce_upload_rate_limit)],
+) -> DocumentResponse:
+    try:
+        document = await get_document(session, document_id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+    document.status = DocumentStatus.PENDING
+    document.error_message = None
+    await session.commit()
+    try:
+        dispatch(str(document.id))
+    except Exception as exc:
+        document.status = DocumentStatus.FAILED
+        document.error_message = "Document could not be queued. Please retry."
+        await session.commit()
+        raise HTTPException(status_code=503, detail=document.error_message) from exc
     return DocumentResponse.model_validate(document)
 
 
@@ -54,10 +85,7 @@ async def list_documents_endpoint(
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(get_current_user)],
 ) -> list[DocumentResponse]:
-    return [
-        DocumentResponse.model_validate(document)
-        for document in await list_documents(session)
-    ]
+    return [DocumentResponse.model_validate(document) for document in await list_documents(session)]
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)

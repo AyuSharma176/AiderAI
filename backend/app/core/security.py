@@ -1,12 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import jwt
-from pydantic import BaseModel, ValidationError
 from pwdlib import PasswordHash
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
-
 
 password_hasher = PasswordHash.recommended()
 
@@ -30,14 +29,10 @@ def verify_password(password: str, encoded: str) -> bool:
     return password_hasher.verify(password, encoded)
 
 
-def create_access_token(
-    user_id: UUID, *, expires_delta: timedelta | None = None
-) -> str:
+def create_access_token(user_id: UUID, *, expires_delta: timedelta | None = None) -> str:
     settings = get_settings()
-    issued_at = datetime.now(timezone.utc)
-    expires_at = issued_at + (
-        expires_delta or timedelta(minutes=settings.jwt_access_token_minutes)
-    )
+    issued_at = datetime.now(UTC)
+    expires_at = issued_at + (expires_delta or timedelta(minutes=settings.jwt_access_token_minutes))
     return jwt.encode(
         {"sub": str(user_id), "iat": issued_at, "exp": expires_at, "type": "access"},
         settings.jwt_secret.get_secret_value(),
@@ -60,4 +55,3 @@ def decode_access_token(token: str) -> TokenClaims:
         return claims
     except (jwt.PyJWTError, ValidationError, ValueError) as exc:
         raise InvalidTokenError("Invalid access token") from exc
-
