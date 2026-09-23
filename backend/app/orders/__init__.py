@@ -1,0 +1,1 @@
+"""Normalized commerce-order domain."""
