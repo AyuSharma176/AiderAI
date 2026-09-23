@@ -103,3 +103,17 @@ async def enforce_upload_rate_limit(
         await RateLimiter(redis, window_seconds=settings.rate_limit_window_seconds).check(
             "upload", str(user.id), limit=settings.upload_rate_limit
         )
+
+
+async def enforce_integration_sync_rate_limit(
+    request: Request,
+    redis: Annotated[RedisCounter, Depends(get_redis_client)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    if settings.app_env != "test":
+        await RateLimiter(redis, window_seconds=settings.rate_limit_window_seconds).check(
+            "integration-sync",
+            str(user.id),
+            limit=settings.integration_sync_rate_limit,
+        )

@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     gmail_sync_interval_minutes: int = 30
     gmail_max_message_bytes: int = 1_000_000
     gmail_message_id_pepper: SecretStr | None = None
+    frontend_url: str = "http://localhost:5173"
+    integration_sync_rate_limit: int = 3
 
     @model_validator(mode="after")
     def require_provider_key(self) -> "Settings":

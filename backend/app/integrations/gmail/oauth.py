@@ -187,3 +187,20 @@ class GoogleOAuthClient:
             raise OAuthProviderUnavailable(
                 "Google authorization is temporarily unavailable"
             ) from exc
+
+    async def get_profile(self, access_token: str) -> dict[str, str]:
+        try:
+            response = await self.http_client.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            email = payload.get("emailAddress")
+            history_id = payload.get("historyId")
+            if not isinstance(email, str) or not isinstance(history_id, str):
+                raise TypeError("invalid profile")
+            return {"emailAddress": email, "historyId": history_id}
+        except (httpx.HTTPError, TypeError, ValueError) as exc:
+            raise OAuthProviderUnavailable("Gmail profile is temporarily unavailable") from exc
