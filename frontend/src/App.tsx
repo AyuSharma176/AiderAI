@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthPage } from "./auth/AuthPage";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { ChatPage } from "./chat/ChatPage";
+import { ConversationList } from "./conversations/ConversationList";
 import { DashboardLayout } from "./layout/DashboardLayout";
 
 function Placeholder({ title, description }: { title: string; description: string }) {
@@ -15,8 +17,8 @@ export function App() {
       <Route path="/register" element={<AuthPage mode="register" />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path="/chat" element={<Placeholder title="Support chat" description="Ask a question or take action for a customer." />} />
-          <Route path="/conversations" element={<Placeholder title="Conversations" description="Return to a previous support thread." />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/conversations" element={<ConversationList />} />
           <Route path="/knowledge" element={<Placeholder title="Knowledge base" description="Manage the documents that ground AI answers." />} />
         </Route>
       </Route>

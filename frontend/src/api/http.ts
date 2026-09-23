@@ -1,7 +1,7 @@
 import type { ApiErrorBody } from "./types";
 import { clearSession, getAccessToken } from "../auth/storage";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
+export const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
 
 export class ApiError extends Error {
   constructor(
