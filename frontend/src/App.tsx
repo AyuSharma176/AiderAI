@@ -6,6 +6,8 @@ import { ChatPage } from "./chat/ChatPage";
 import { ConversationList } from "./conversations/ConversationList";
 import { DocumentsPage } from "./documents/DocumentsPage";
 import { DashboardLayout } from "./layout/DashboardLayout";
+import { OrderDetailPage } from "./orders/OrderDetailPage";
+import { OrdersPage } from "./orders/OrdersPage";
 
 function Placeholder({ title, description }: { title: string; description: string }) {
   return <section className="page"><p className="eyebrow">Workspace</p><h1>{title}</h1><p className="muted">{description}</p></section>;
@@ -21,6 +23,8 @@ export function App() {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/conversations" element={<ConversationList />} />
           <Route path="/knowledge" element={<DocumentsPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/chat" replace />} />

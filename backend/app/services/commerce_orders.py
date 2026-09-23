@@ -58,7 +58,11 @@ async def list_commerce_orders(
     filters: CommerceOrderFilters,
 ) -> tuple[list[CommerceOrder], str | None]:
     sort_at = func.coalesce(CommerceOrder.placed_at, CommerceOrder.created_at)
-    statement = select(CommerceOrder).where(CommerceOrder.user_id == user_id)
+    statement = (
+        select(CommerceOrder)
+        .where(CommerceOrder.user_id == user_id)
+        .options(selectinload(CommerceOrder.items))
+    )
     if filters.marketplace:
         statement = statement.where(CommerceOrder.marketplace == filters.marketplace)
     if filters.status:

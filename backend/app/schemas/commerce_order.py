@@ -45,10 +45,10 @@ class CommerceOrderResponse(BaseModel):
     carrier: str | None
     marketplace_url: str | None
     last_source_message_at: datetime | None
+    items: list[CommerceOrderItemResponse] = []
 
 
 class CommerceOrderDetailResponse(CommerceOrderResponse):
-    items: list[CommerceOrderItemResponse]
     events: list[OrderSourceEventResponse]
 
 

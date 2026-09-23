@@ -6,6 +6,7 @@ const links = [
   { to: "/chat", label: "Chat", icon: "✦" },
   { to: "/conversations", label: "Conversations", icon: "◫" },
   { to: "/knowledge", label: "Knowledge base", icon: "▤" },
+  { to: "/orders", label: "My Orders", icon: "▣" },
 ];
 
 export function Sidebar() {
@@ -20,6 +21,7 @@ export function Sidebar() {
               <span aria-hidden="true">{link.icon}</span>{link.label}
             </NavLink>
           ))}
+          <button className="nav-link mobile-signout" onClick={logout} type="button"><span aria-hidden="true">↪</span>Sign out</button>
         </nav>
       </div>
       <div className="account-block">

@@ -78,6 +78,7 @@ async def test_list_filters_by_owner_marketplace_status_and_query(order_context)
 
     assert response.status_code == 200
     assert [item["marketplace_order_id"] for item in response.json()["items"]] == ["A-1"]
+    assert response.json()["items"][0]["items"][0]["title"] == "USB-C charger"
 
 
 @pytest.mark.asyncio
