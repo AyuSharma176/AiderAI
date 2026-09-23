@@ -23,7 +23,8 @@ it("rejects a non-PDF before upload", async () => {
   await user.upload(input, new File(["text"], "notes.txt", { type: "text/plain" }));
 
   expect(screen.getByText("Choose a PDF file.")).toBeVisible();
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock.mock.calls.every(([, init]) => !init || init.method === undefined)).toBe(true);
 });
 
 
@@ -37,12 +38,14 @@ it("polls only while a document is pending or processing", () => {
 it("renders a safe failed status message", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(
+    vi.fn().mockImplementation((input: string) => Promise.resolve(
       new Response(
-        JSON.stringify([{ id: "d1", filename: "broken.pdf", status: "failed", error_message: "Document processing failed. Please try again.", created_at: "2026-09-23T10:00:00Z", updated_at: "2026-09-23T10:00:00Z" }]),
+        JSON.stringify(input.endsWith("/documents")
+          ? [{ id: "d1", filename: "broken.pdf", status: "failed", error_message: "Document processing failed. Please try again.", created_at: "2026-09-23T10:00:00Z", updated_at: "2026-09-23T10:00:00Z" }]
+          : { status: "disconnected", marketplace_counts: {} }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
-    ),
+    )),
   );
   renderDocuments();
 
