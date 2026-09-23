@@ -68,7 +68,11 @@ async def test_profile_ignores_model_supplied_identity(tool_context) -> None:
         "get_customer_profile", {"user_id": str(user_b.id)}, user_a.id
     )
 
-    assert result.data == {"email": user_a.email, "name": user_a.name}
+    assert result.data == {
+        "id": str(user_a.id),
+        "email": user_a.email,
+        "name": user_a.name,
+    }
 
 
 @pytest.mark.asyncio

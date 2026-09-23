@@ -42,7 +42,7 @@ async def get_customer_profile(user_id: UUID, session: AsyncSession) -> ToolResu
         raise ToolNotFoundError("Customer not found")
     return ToolResult(
         name="get_customer_profile",
-        data={"email": user.email, "name": user.name},
+        data={"id": str(user.id), "email": user.email, "name": user.name},
     )
 
 
