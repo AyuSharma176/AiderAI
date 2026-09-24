@@ -21,10 +21,14 @@ export async function authenticatedFetch(
   const headers = new Headers(init.headers);
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
   if (response.status === 401 && token) {
     clearSession();
-    window.dispatchEvent(new Event("supportai:unauthorized"));
+    window.dispatchEvent(new Event("aiderai:unauthorized"));
   }
   return response;
 }

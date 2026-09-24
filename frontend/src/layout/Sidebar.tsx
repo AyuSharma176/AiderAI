@@ -14,7 +14,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div>
-        <div className="sidebar-brand"><span>◇</span> SupportAI</div>
+        <div className="sidebar-brand"><span>◇</span> AiderAI</div>
         <nav aria-label="Main navigation">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>

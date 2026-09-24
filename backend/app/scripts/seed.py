@@ -16,10 +16,22 @@ async def seed_demo_data(session: AsyncSession, settings: Settings | None = None
     if settings.app_env != "development":
         return
 
-    user = await session.scalar(select(User).where(User.email == "demo@supportai.local"))
+    user = await session.scalar(select(User).where(User.email == "demo@aiderai.local"))
+    legacy_user = await session.scalar(
+        select(User).where(User.email == "demo@supportai.local")
+    )
+    if user is not None and legacy_user is not None:
+        raise RuntimeError(
+            "Found both legacy and AiderAI demo users; merge or remove one account "
+            "before running the development seed."
+        )
+    if user is None and legacy_user is not None:
+        user = legacy_user
+        user.email = "demo@aiderai.local"
+        await session.flush()
     if user is None:
         user = User(
-            email="demo@supportai.local",
+            email="demo@aiderai.local",
             name="Demo User",
             password_hash=password_hash.hash("DemoPass123!"),
         )

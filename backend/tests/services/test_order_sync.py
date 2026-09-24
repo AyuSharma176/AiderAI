@@ -50,6 +50,8 @@ class FakeGmail:
         self.full_query_after: datetime | None = None
         self.message_ids = ["m1"]
         self.fail_on_message: str | None = None
+        self.active_downloads = 0
+        self.peak_downloads = 0
 
     async def list_candidate_ids(self, after: datetime, page_token: str | None):
         self.full_query_after = after
@@ -62,8 +64,13 @@ class FakeGmail:
     async def get_message(self, message_id: str):
         if message_id == self.fail_on_message:
             raise RuntimeError("provider failed")
-        await asyncio.sleep(0.01)
-        return amazon_message()
+        self.active_downloads += 1
+        self.peak_downloads = max(self.peak_downloads, self.active_downloads)
+        try:
+            await asyncio.sleep(0.01)
+            return amazon_message()
+        finally:
+            self.active_downloads -= 1
 
     async def list_history(self, start_history_id: str, page_token: str | None):
         if self.history_error:
@@ -208,3 +215,14 @@ async def test_partial_batch_failure_rolls_back_orders_and_restores_connected_st
         assert persisted.status == EmailConnectionStatus.CONNECTED
         assert persisted.last_sync_error_code == "sync_failed"
         assert persisted.last_sync_completed_at is None
+
+
+@pytest.mark.asyncio
+async def test_message_downloads_use_bounded_concurrency(sync_context) -> None:
+    _, _, connection, gmail, synchronizer = sync_context
+    gmail.message_ids = ["m1", "m2", "m3", "m4"]
+    synchronizer.parsers = []
+
+    await synchronizer.sync(connection.id, mode="full")
+
+    assert 1 < gmail.peak_downloads <= 8

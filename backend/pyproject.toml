@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "supportai-backend"
+name = "aiderai-backend"
 version = "0.1.0"
-description = "SupportAI customer-support API and worker"
+description = "AiderAI customer-support API and worker"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

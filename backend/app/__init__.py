@@ -1,1 +1,1 @@
-"""SupportAI backend application."""
+"""AiderAI backend application."""

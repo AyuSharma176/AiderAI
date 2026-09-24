@@ -1,6 +1,6 @@
-# SupportAI Agent Platform
+# AiderAI Agent Platform
 
-SupportAI is a portfolio-grade customer-support workspace that combines authenticated chat, document-grounded answers, safe account tools, persistent history, and asynchronous PDF indexing. It is intentionally a modular monolith: easy to run locally and explain in an interview, while retaining production-minded boundaries around identity, untrusted content, retries, observability, and external AI calls.
+AiderAI is a portfolio-grade customer-support workspace that combines authenticated chat, document-grounded answers, safe account tools, persistent history, and asynchronous PDF indexing. It is intentionally a modular monolith: easy to run locally and explain in an interview, while retaining production-minded boundaries around identity, untrusted content, retries, observability, and external AI calls.
 
 ## Feature tour
 
@@ -95,7 +95,7 @@ Copy `.env.example` to `.env`, replace the development secrets, and add your Gem
 | `JWT_ALGORITHM` | Token signature algorithm | `HS256` |
 | `JWT_ACCESS_TOKEN_MINUTES` | Access-token lifetime | `30` |
 | `GEMINI_API_KEY` | Required for normal AI operation | none |
-| `GEMINI_CHAT_MODEL` | Intent and answer model | `gemini-2.5-flash` |
+| `GEMINI_CHAT_MODEL` | Intent and answer model | `gemini-3.6-flash` |
 | `GEMINI_EMBEDDING_MODEL` | 768-dimensional embedding model | `gemini-embedding-001` |
 | `CORS_ORIGINS` | JSON array of allowed browser origins | localhost:5173 |
 | `UPLOAD_DIR` | Worker-visible PDF storage | `/app/uploads` |
@@ -130,7 +130,7 @@ docker compose run --rm api python -m app.scripts.seed
 docker compose up --build api worker frontend
 ```
 
-Open `http://localhost:5173`. The development seed account is `demo@supportai.local` / `DemoPass123!`; change or remove it outside local development.
+Open `http://localhost:5173`. The development seed account is `demo@aiderai.local` / `DemoPass123!`; change or remove it outside local development.
 
 Useful operations:
 
@@ -145,7 +145,7 @@ The final command is destructive and is only appropriate when you intentionally 
 
 ## Connect Gmail for Amazon and Flipkart orders
 
-SupportAI connects to Gmail with Google's OAuth consent screen and requests only the
+AiderAI connects to Gmail with Google's OAuth consent screen and requests only the
 `gmail.readonly` scope. It never asks for or stores an Amazon, Flipkart, or email
 password. Marketplace shopper accounts do not expose a suitable consumer-order API,
 so this release extracts order facts only from the user's own opted-in notification
@@ -276,7 +276,7 @@ On a provider failure the stream terminates with one `error` event, and no parti
 
 ## Troubleshooting
 
-- **Docker Desktop closes while initializing inference:** install the current Docker Desktop update, quit it fully, and start it again. SupportAI uses Gemini over the official SDK and does not require Docker's local inference manager.
+- **Docker Desktop closes while initializing inference:** install the current Docker Desktop update, quit it fully, and start it again. AiderAI uses Gemini over the official SDK and does not require Docker's local inference manager.
 - **`GEMINI_API_KEY is required`:** put a real key in the root `.env`, then recreate `api` and `worker` with `docker compose up -d --force-recreate api worker`.
 - **Document remains pending:** check `docker compose logs worker`, confirm Redis is healthy, and verify the API and worker share the `uploads` volume.
 - **Document fails with no readable text:** use a text-based PDF. Scanned image-only PDFs need OCR, which is outside this release.

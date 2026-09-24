@@ -47,6 +47,7 @@ it("renders accessible registration fields", () => {
     </MemoryRouter>,
   );
 
+  expect(screen.getByText("AiderAI")).toBeVisible();
   expect(screen.getByRole("heading", { name: /create your account/i })).toBeVisible();
   expect(screen.getByLabelText(/full name/i)).toBeVisible();
 });

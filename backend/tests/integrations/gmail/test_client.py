@@ -63,3 +63,26 @@ async def test_history_request_uses_cursor_and_page_token() -> None:
     assert requests[0].url.params["startHistoryId"] == "10"
     assert requests[0].url.params["pageToken"] == "next"
     assert page.history_id == "12"
+
+
+@pytest.mark.asyncio
+async def test_access_token_is_reused_across_requests() -> None:
+    token_requests = 0
+
+    async def access_token() -> str:
+        nonlocal token_requests
+        token_requests += 1
+        return "access-token"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"messages": [], "historyId": "10"})
+
+    client = GmailClient(
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        access_token_provider=access_token,
+    )
+
+    await client.list_candidate_ids(datetime(2025, 9, 24, tzinfo=UTC), None)
+    await client.list_candidate_ids(datetime(2025, 9, 24, tzinfo=UTC), None)
+
+    assert token_requests == 1

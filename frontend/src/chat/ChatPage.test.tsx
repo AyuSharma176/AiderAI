@@ -45,7 +45,7 @@ it("renders stage then streamed answer and citation", async () => {
   const user = userEvent.setup();
   renderChat();
 
-  await user.type(screen.getByLabelText(/message supportai/i), "How long do refunds take?");
+  await user.type(screen.getByLabelText(/message aiderai/i), "How long do refunds take?");
   await user.click(screen.getByRole("button", { name: /send message/i }));
 
   expect(await screen.findByText("Refunds take five days.")).toBeVisible();
@@ -66,7 +66,7 @@ it("preserves a failed message and offers retry", async () => {
   const user = userEvent.setup();
   renderChat();
 
-  await user.type(screen.getByLabelText(/message supportai/i), "Please help");
+  await user.type(screen.getByLabelText(/message aiderai/i), "Please help");
   await user.click(screen.getByRole("button", { name: /send message/i }));
 
   expect(await screen.findByText("Please help")).toBeVisible();
@@ -95,7 +95,7 @@ it("loads a selected conversation and continues it", async () => {
   renderChat("/chat?conversation=c-existing");
 
   expect(await screen.findByText("Earlier answer")).toBeVisible();
-  await user.type(screen.getByLabelText(/message supportai/i), "Follow up");
+  await user.type(screen.getByLabelText(/message aiderai/i), "Follow up");
   await user.click(screen.getByRole("button", { name: /send message/i }));
   expect(await screen.findByText("Continued")).toBeVisible();
   const request = fetchMock.mock.calls[1][1] as RequestInit;

@@ -38,8 +38,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const isLogin = mode === "login";
   return (
     <main className="auth-shell">
-      <section className="auth-brand" aria-label="SupportAI overview">
-        <Link className="brand" to="/">SupportAI</Link>
+      <section className="auth-brand" aria-label="AiderAI overview">
+        <Link className="brand" to="/">AiderAI</Link>
         <p className="eyebrow">AI customer care workspace</p>
         <h2>Resolve every request with context and confidence.</h2>
         <p>Grounded answers, safe account actions, and a clear history for every conversation.</p>
@@ -49,7 +49,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           <p className="eyebrow">{isLogin ? "Secure sign in" : "Get started"}</p>
           <h1>{isLogin ? "Welcome back" : "Create your account"}</h1>
           <p className="muted">
-            {isLogin ? "Continue to your support workspace." : "Set up your SupportAI workspace."}
+            {isLogin ? "Continue to your support workspace." : "Set up your AiderAI workspace."}
           </p>
           {!isLogin && (
             <label>
@@ -70,7 +70,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             {submitting ? "Please wait…" : isLogin ? "Sign in" : "Create account"}
           </button>
           <p className="auth-switch">
-            {isLogin ? "New to SupportAI?" : "Already have an account?"}{" "}
+            {isLogin ? "New to AiderAI?" : "Already have an account?"}{" "}
             <Link to={isLogin ? "/register" : "/login"}>{isLogin ? "Create an account" : "Sign in"}</Link>
           </p>
         </form>

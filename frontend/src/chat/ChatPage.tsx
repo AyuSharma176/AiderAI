@@ -109,7 +109,7 @@ export function ChatPage() {
         {detail.isLoading && !messages.length ? <p>Loading conversation…</p> : <MessageList messages={messages} />}
         {error && failedAttempt && <div className="stream-error" role="alert"><span>{error}</span><button type="button" onClick={() => send(failedAttempt.content, failedAttempt.id, false)}>Retry</button></div>}
       </div>
-      <footer className="composer-wrap"><ChatComposer onSend={send} disabled={streaming} /><small>SupportAI can make mistakes. Verify important account details.</small></footer>
+      <footer className="composer-wrap"><ChatComposer onSend={send} disabled={streaming} /><small>AiderAI can make mistakes. Verify important account details.</small></footer>
     </section>
   );
 }

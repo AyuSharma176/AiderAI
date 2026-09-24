@@ -20,7 +20,7 @@ from app.services.rate_limit import RateLimitBackendError, RateLimitExceeded
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging()
-    application = FastAPI(title="SupportAI API", version="0.1.0")
+    application = FastAPI(title="AiderAI API", version="0.1.0")
     application.add_middleware(RequestContextMiddleware)
     application.add_middleware(UploadBodyLimitMiddleware, max_bytes=settings.max_upload_bytes)
     application.add_middleware(

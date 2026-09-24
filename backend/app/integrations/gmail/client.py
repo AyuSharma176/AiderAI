@@ -36,10 +36,14 @@ class GmailClient:
         self.http_client = http_client
         self.access_token_provider = access_token_provider
         self.api_root = api_root.rstrip("/")
+        self._access_token: str | None = None
 
     async def _token(self) -> str:
+        if self._access_token is not None:
+            return self._access_token
         value = self.access_token_provider()
-        return await value if inspect.isawaitable(value) else value
+        self._access_token = await value if inspect.isawaitable(value) else value
+        return self._access_token
 
     async def _get(
         self, path: str, *, params: dict[str, str], history_request: bool = False

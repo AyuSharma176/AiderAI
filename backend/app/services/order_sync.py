@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -99,6 +100,7 @@ _STATUS_PRECEDENCE = {
     CommerceOrderStatus.RETURN_UPDATE: 5,
     CommerceOrderStatus.CANCELLED: 6,
 }
+_MESSAGE_FETCH_CONCURRENCY = 8
 
 
 def _subtract_months(value: datetime, months: int) -> datetime:
@@ -204,35 +206,54 @@ class OrderSynchronizer:
         parsed_count = 0
         skipped_count = 0
         order_keys: set[tuple[str, str]] = set()
+        message_hashes = {
+            message_id: sha256(
+                f"{self.message_id_pepper}:{message_id}".encode()
+            ).hexdigest()
+            for message_id in message_ids
+        }
         async with self.session_factory() as session:
-            for message_id in message_ids:
-                message_hash = sha256(
-                    f"{self.message_id_pepper}:{message_id}".encode()
-                ).hexdigest()
-                exists = await session.scalar(
-                    select(OrderSourceEvent.id).where(
+            existing_hashes = set(
+                await session.scalars(
+                    select(OrderSourceEvent.provider_message_id_hash).where(
                         OrderSourceEvent.connection_id == connection.id,
-                        OrderSourceEvent.provider_message_id_hash == message_hash,
+                        OrderSourceEvent.provider_message_id_hash.in_(
+                            message_hashes.values()
+                        ),
                     )
                 )
-                if exists:
-                    skipped_count += 1
-                    continue
-                raw = await self.gmail.get_message(message_id)
-                email = normalize_message(raw, self.settings.gmail_max_message_bytes)
-                parser = next((item for item in self.parsers if item.matches(email)), None)
-                observations = parser.parse(email) if parser else []
-                if not observations:
-                    skipped_count += 1
-                    continue
-                parsed_count += 1
-                for observation in observations:
-                    await self._upsert_observation(
-                        session, connection, observation, message_hash, parser
+            ) if message_hashes else set()
+            pending = [
+                (message_id, message_hash)
+                for message_id, message_hash in message_hashes.items()
+                if message_hash not in existing_hashes
+            ]
+            skipped_count += len(message_ids) - len(pending)
+            for start in range(0, len(pending), _MESSAGE_FETCH_CONCURRENCY):
+                batch = pending[start : start + _MESSAGE_FETCH_CONCURRENCY]
+                raw_messages = await asyncio.gather(
+                    *(self.gmail.get_message(message_id) for message_id, _ in batch)
+                )
+                for (_, message_hash), raw in zip(batch, raw_messages, strict=True):
+                    email = normalize_message(raw, self.settings.gmail_max_message_bytes)
+                    parser = next(
+                        (item for item in self.parsers if item.matches(email)), None
                     )
-                    order_keys.add(
-                        (observation.marketplace.value, observation.marketplace_order_id)
-                    )
+                    observations = parser.parse(email) if parser else []
+                    if not observations:
+                        skipped_count += 1
+                        continue
+                    parsed_count += 1
+                    for observation in observations:
+                        await self._upsert_observation(
+                            session, connection, observation, message_hash, parser
+                        )
+                        order_keys.add(
+                            (
+                                observation.marketplace.value,
+                                observation.marketplace_order_id,
+                            )
+                        )
             await session.commit()
         return SyncResult(
             candidate_count=len(message_ids),

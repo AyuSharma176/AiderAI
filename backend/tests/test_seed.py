@@ -30,7 +30,7 @@ async def test_seed_is_idempotent(db_session, monkeypatch: pytest.MonkeyPatch) -
     users = (await db_session.scalars(select(User))).all()
     orders = (await db_session.scalars(select(Order))).all()
     assert len(users) == 1
-    assert users[0].email == "demo@supportai.local"
+    assert users[0].email == "demo@aiderai.local"
     assert {order.order_number for order in orders} == {"ORD-1001", "ORD-1002"}
 
 
@@ -44,3 +44,54 @@ async def test_seed_skips_non_development_environment(
     await seed_demo_data(db_session, Settings(_env_file=None))
 
     assert (await db_session.scalars(select(User))).all() == []
+
+
+@pytest.mark.asyncio
+async def test_seed_migrates_legacy_demo_user(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("JWT_SECRET", "test-only-secret")
+    legacy_user = User(
+        email="demo@supportai.local",
+        name="Demo User",
+        password_hash="existing-hash",
+    )
+    db_session.add(legacy_user)
+    await db_session.commit()
+
+    await seed_demo_data(db_session, Settings(_env_file=None))
+
+    users = (await db_session.scalars(select(User))).all()
+    assert len(users) == 1
+    assert users[0].email == "demo@aiderai.local"
+    assert users[0].password_hash == "existing-hash"
+
+
+@pytest.mark.asyncio
+async def test_seed_refuses_ambiguous_demo_user_collision(
+    db_session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("JWT_SECRET", "test-only-secret")
+    db_session.add_all(
+        [
+            User(
+                email="demo@supportai.local",
+                name="Legacy Demo User",
+                password_hash="legacy-hash",
+            ),
+            User(
+                email="demo@aiderai.local",
+                name="AiderAI Demo User",
+                password_hash="new-hash",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    with pytest.raises(RuntimeError, match="both legacy and AiderAI demo users"):
+        await seed_demo_data(db_session, Settings(_env_file=None))
+
+    users = (await db_session.scalars(select(User))).all()
+    assert len(users) == 2

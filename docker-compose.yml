@@ -34,7 +34,7 @@ services:
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_ACCESS_TOKEN_MINUTES: ${JWT_ACCESS_TOKEN_MINUTES:-30}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
+      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-3.6-flash}
       GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:5173"]}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
@@ -104,7 +104,7 @@ services:
     build: ./frontend
     command: npm run dev -- --host 0.0.0.0
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
+      VITE_API_URL: ${VITE_API_URL:-/api/v1}
       VITE_MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
     depends_on:
       api:

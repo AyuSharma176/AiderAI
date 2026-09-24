@@ -3,7 +3,7 @@ import type { DocumentRecord } from "./useDocuments";
 const labels = { pending: "Queued", processing: "Processing", ready: "Ready", failed: "Failed" };
 
 export function DocumentTable({ documents }: { documents: DocumentRecord[] }) {
-  if (!documents.length) return <div className="documents-empty"><strong>No documents yet</strong><p>Upload a PDF to start grounding SupportAI answers.</p></div>;
+  if (!documents.length) return <div className="documents-empty"><strong>No documents yet</strong><p>Upload a PDF to start grounding AiderAI answers.</p></div>;
   return (
     <div className="document-table-wrap">
       <table className="document-table">

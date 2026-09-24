@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 from fastapi import FastAPI, Form, Query
 from fastapi.responses import RedirectResponse
 
-app = FastAPI(title="SupportAI fake Gmail")
+app = FastAPI(title="AiderAI fake Gmail")
 
 
 def encoded(value: str) -> str:

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://supportai:supportai@postgres:5432/supportai"
     redis_url: str = "redis://redis:6379/0"
     gemini_api_key: SecretStr | None = None
-    gemini_chat_model: str = "gemini-2.5-flash"
+    gemini_chat_model: str = "gemini-3.6-flash"
     gemini_embedding_model: str = "gemini-embedding-001"
     jwt_secret: SecretStr
     jwt_algorithm: str = "HS256"

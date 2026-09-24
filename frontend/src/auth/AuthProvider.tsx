@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    window.addEventListener("supportai:unauthorized", logout);
-    return () => window.removeEventListener("supportai:unauthorized", logout);
+    window.addEventListener("aiderai:unauthorized", logout);
+    return () => window.removeEventListener("aiderai:unauthorized", logout);
   }, [logout]);
 
   const completeAuthentication = useCallback((response: AuthResponse) => {
